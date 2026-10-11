@@ -466,9 +466,8 @@ impl rt::window::WindowBuilder for QtWindowBuilder {
 }
 
 impl<T: UserEvent> EventLoopProxy<T> for QtEventLoopProxy {
-    fn send_event(&self, _event: T) -> Result<()> {
-        // M4: push into queue + wake Qt main loop.
-        Err(Error::FailedToSendMessage)
+    fn send_event(&self, event: T) -> Result<()> {
+        ops::runtime::proxy_send_event(event)
     }
 }
 
@@ -479,8 +478,8 @@ impl<T: UserEvent> rt::RuntimeHandle<T> for QtRuntimeHandle {
         QtEventLoopProxy
     }
 
-    fn request_exit(&self, _code: i32) -> Result<()> {
-        Err(Error::EventLoopClosed)
+    fn request_exit(&self, code: i32) -> Result<()> {
+        ops::runtime::request_exit(code)
     }
 
     fn create_window<F: Fn(RawWindow) + Send + 'static>(
@@ -504,23 +503,23 @@ impl<T: UserEvent> rt::RuntimeHandle<T> for QtRuntimeHandle {
     }
 
     fn display_handle(&self) -> std::result::Result<DisplayHandle<'_>, HandleError> {
-        Err(HandleError::Unavailable)
+        ops::runtime::display_handle()
     }
 
     fn primary_monitor(&self) -> Result<Option<Monitor>> {
-        Ok(None)
+        ops::screen::primary_monitor()
     }
 
-    fn monitor_from_point(&self, _x: f64, _y: f64) -> Result<Option<Monitor>> {
-        Ok(None)
+    fn monitor_from_point(&self, x: f64, y: f64) -> Result<Option<Monitor>> {
+        ops::screen::monitor_from_point(x, y)
     }
 
     fn available_monitors(&self) -> Result<Vec<Monitor>> {
-        Ok(Vec::new())
+        ops::screen::available_monitors()
     }
 
     fn cursor_position(&self) -> Result<rt::dpi::PhysicalPosition<f64>> {
-        Err(Error::FailedToGetCursorPosition)
+        ops::screen::cursor_position()
     }
 
     fn set_theme(&self, _theme: Option<Theme>) {}
@@ -575,19 +574,19 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
     }
 
     fn primary_monitor(&self) -> Option<Monitor> {
-        None
+        ops::screen::primary_monitor().ok().flatten()
     }
 
-    fn monitor_from_point(&self, _x: f64, _y: f64) -> Option<Monitor> {
-        None
+    fn monitor_from_point(&self, x: f64, y: f64) -> Option<Monitor> {
+        ops::screen::monitor_from_point(x, y).ok().flatten()
     }
 
     fn available_monitors(&self) -> Vec<Monitor> {
-        Vec::new()
+        ops::screen::available_monitors().unwrap_or_default()
     }
 
     fn cursor_position(&self) -> Result<rt::dpi::PhysicalPosition<f64>> {
-        Err(Error::FailedToGetCursorPosition)
+        ops::screen::cursor_position()
     }
 
     fn set_theme(&self, _theme: Option<Theme>) {}
@@ -595,13 +594,25 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
     fn set_device_event_filter(&mut self, _filter: DeviceEventFilter) {}
 
     fn run_iteration<F: FnMut(RunEvent<T>) + 'static>(&mut self, _callback: F) {
-        // M4: QCoreApplication::processEvents()
+        // Qt owns the thread inside exec(); the pump delivers user events.
+        ops::runtime::run_iteration();
     }
 
     fn run_return<F: FnMut(RunEvent<T>) + 'static>(self, mut callback: F) -> i32 {
         callback(RunEvent::Ready);
+        // Qt owns the thread inside exec(), so user events are delivered from
+        // the pump tick. The run callback is not required to be `Send`, hence
+        // the main-thread-only sink wrapper.
+        let callback = std::rc::Rc::new(std::cell::RefCell::new(callback));
+        let user_callback = std::rc::Rc::clone(&callback);
+        ops::runtime::set_event_sink(ops::runtime::main_thread_sink(move |event| {
+            if let Ok(event) = event.downcast::<T>() {
+                user_callback.borrow_mut()(RunEvent::UserEvent(*event));
+            }
+        }));
+        ops::runtime::start_pump();
         let code = qt::ffi::qt_run();
-        callback(RunEvent::Exit);
+        callback.borrow_mut()(RunEvent::Exit);
         code
     }
 
@@ -609,10 +620,18 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
         #[cfg(debug_assertions)]
         eprintln!("[tauri-runtime-qt] run: emitting Ready");
         callback(RunEvent::Ready);
+        let callback = std::rc::Rc::new(std::cell::RefCell::new(callback));
+        let user_callback = std::rc::Rc::clone(&callback);
+        ops::runtime::set_event_sink(ops::runtime::main_thread_sink(move |event| {
+            if let Ok(event) = event.downcast::<T>() {
+                user_callback.borrow_mut()(RunEvent::UserEvent(*event));
+            }
+        }));
+        ops::runtime::start_pump();
         #[cfg(debug_assertions)]
         eprintln!("[tauri-runtime-qt] run: entering Qt event loop");
         qt::ffi::qt_run();
-        callback(RunEvent::Exit);
+        callback.borrow_mut()(RunEvent::Exit);
     }
 }
 
