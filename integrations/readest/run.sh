@@ -5,7 +5,8 @@
 #
 # Start it from this repo's dev shell, which carries Qt and qmake:
 #     nix develop -c integrations/readest/run.sh
-# The app's own dev server is started by tauri (beforeDevCommand); stop with ^C.
+# Everything is torn down on exit; extra arguments go to the tauri CLI, e.g.
+#     ... run.sh --config '{"app":{"windows":[]}}'
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -26,11 +27,39 @@ export QMAKE="${QMAKE:-$(command -v qmake)}"
 # docs/nix-qt-gotchas.md in this repo).
 export QTWEBENGINE_REMOTE_DEBUGGING="${QTWEBENGINE_REMOTE_DEBUGGING:-9222}"
 export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox --disable-gpu --disable-gpu-compositing}"
+# A build sandbox has no display; callers that have one (or a headless sway
+# session) override this.
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
-echo "CDP on 127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING (try: curl -s \$QTWEBENGINE_REMOTE_DEBUGGING/json/version)"
+cleanup() {
+  [[ -n "${DEV_PID:-}" ]] && kill "$DEV_PID" 2>/dev/null || true
+  [[ -n "${APP_PID:-}" ]] && kill "$APP_PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
+
+# Readest's beforeDevCommand is `dotenv -e .env.tauri -- next dev` and the repo
+# ships no .env.tauri, so serve the frontend here and tell tauri not to (the
+# same dodge their own scripts/test-tauri.sh uses).
+if curl -sf "http://localhost:3000" >/dev/null 2>&1; then
+  echo "dev server already up on :3000"
+else
+  echo "starting next dev on :3000"
+  (cd "$app" && exec node_modules/.bin/next dev) >"$checkout/next-dev.log" 2>&1 &
+  DEV_PID=$!
+  for _ in $(seq 1 120); do
+    curl -sf "http://localhost:3000" >/dev/null 2>&1 && break
+    kill -0 "$DEV_PID" 2>/dev/null || { echo "next dev died; see $checkout/next-dev.log" >&2; exit 1; }
+    sleep 1
+  done
+  curl -sf "http://localhost:3000" >/dev/null 2>&1 || { echo "next dev never became ready" >&2; exit 1; }
+fi
+
+echo "CDP on 127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING (try: curl -s http://127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING/json/version)"
 
 cd "$app"
-# The CEF build path goes through Readest's own CLI wrapper (scripts/tauri.mjs),
-# which forces the cef runtime on Linux; for qt we call the stock CLI directly.
+# Readest's own CLI wrapper (scripts/tauri.mjs) forces the cef runtime on Linux;
+# for qt call the stock CLI directly.
 exec node "$checkout/node_modules/@tauri-apps/cli/tauri.js" dev \
-  --features qt --no-watch -- --no-default-features "$@"
+  --features qt --no-watch \
+  --config '{"build":{"beforeDevCommand":""}}' \
+  -- --no-default-features "$@"
