@@ -56,13 +56,34 @@ it is `QTWEBENGINE_REMOTE_DEBUGGING` (both point at `127.0.0.1`), and `run.sh` s
 
 Attach with the tooling in this repo, which was written for exactly this:
 
-- `tools/cdp-probe/` — CDP command/event matrix, and Playwright attach through a stub proxy
-  (see `docs/cdp-support-matrix.md`, `docs/webdriver-attach-findings.md`)
+- `tools/cdp-probe/` — CDP command/event matrix (it batteries `invoke()` too, which is
+  what proves the header-carried invoke path on a real app), and Playwright attach through
+  a stub proxy (see `docs/cdp-support-matrix.md`, `docs/webdriver-attach-findings.md`)
 - `tools/webdriver-probe/` — chromedriver attach + endpoint battery
 
 ```bash
-curl -s http://127.0.0.1:9222/json/version   # is a CDP endpoint there at all
+curl -s http://127.0.0.1:9222/json/version      # is a CDP endpoint there at all
+node tools/cdp-probe/probe.mjs --port 9222      # from this repo
+pnpm cdp targets                                # Readest's own dependency-free helper
 ```
+
+### Which Readest suite can actually run
+
+| Suite | Driver | Runs on the Qt runtime? |
+|---|---|---|
+| `test:rust`, unit/`test:pr:web:unit`, `test:browser` | vitest (no app, or its own browser) | unaffected by the runtime |
+| `test:tauri` (`scripts/test-tauri.sh`) | `tauri-plugin-webdriver`, port 4445 | **no** — on Linux that plugin drives WebKitWebDriver, and Readest's own comment says it has "no CEF backend"; it has no Qt one either |
+| `test:e2e` (wdio) | WebDriver on `127.0.0.1:4445`, `browserName: chrome` | **not as configured** — same plugin endpoint |
+| `test:e2e:web` (Playwright) | Playwright against the web build | not the Tauri app at all |
+| CDP (`pnpm cdp`, `chromium.connectOverCDP`) | Chrome DevTools Protocol on 9222 | **yes** — this is the route |
+
+To get Readest's *app-level* e2e onto Qt, the missing piece is a WebDriver endpoint in front
+of the CDP one: run chromedriver against the QtWebEngine CDP port. This repo already did
+that for its demo app (`tools/webdriver-probe/run.sh`; `docs/webdriver-attach-findings.md`
+records 33/39 endpoints passing with a single `/json/version` rewrite, because QtWebEngine
+publishes its product string as `tauri-runtime-qt/`). Point wdio at chromedriver's port and
+`test:e2e`'s specs should run; that needs the wdio port made overridable (it is hardcoded
+to 4445 in `apps/readest-app/wdio.conf.ts`), which belongs in the patch once it is proven.
 
 ## Expectations
 
