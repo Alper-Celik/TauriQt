@@ -56,6 +56,7 @@
 
           cargoLock.lockFile = ./Cargo.lock;
 
+          env.QMAKE = "${qmakeMerged pkgs}/bin/qmake";
           nativeBuildInputs = [
             (qmakeMerged pkgs)
             pkgs.cmake
@@ -85,6 +86,7 @@
 
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
+          QMAKE = "${qmakeMerged pkgs}/bin/qmake";
           packages = [
             (qmakeMerged pkgs)
             pkgs.cargo
