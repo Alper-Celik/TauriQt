@@ -18,8 +18,6 @@ use tauri_runtime::window::WindowEvent;
 pub mod ffi {
     unsafe extern "C++" {
         include!("qt_app.hpp");
-        include!("qt_window.hpp");
-        include!("qt_webview.hpp");
         include!("qt_scheme.hpp");
 
         // ---- application bootstrap (qt_app.cpp) ----
@@ -33,48 +31,6 @@ pub mod ffi {
 
         /// Version string of the Qt runtime actually in use (e.g. "6.11.2").
         fn qt_version() -> String;
-
-        // ---- windows (qt_window.cpp) ----
-        fn qt_window_create(
-            label: &str,
-            title: &str,
-            width: i32,
-            height: i32,
-            visible: bool,
-            decorations: bool,
-        ) -> u64;
-        fn qt_window_show(id: u64);
-        fn qt_window_hide(id: u64);
-        fn qt_window_close(id: u64);
-        fn qt_window_set_title(id: u64, title: &str);
-        fn qt_window_set_size(id: u64, width: i32, height: i32);
-        fn qt_window_center(id: u64);
-        fn qt_window_set_decorations(id: u64, decorations: bool);
-        fn qt_window_set_maximized(id: u64, maximized: bool);
-        fn qt_window_is_visible(id: u64) -> bool;
-        fn qt_window_scale_factor(id: u64) -> f64;
-        fn qt_window_winid(id: u64) -> u64;
-        fn qt_window_attach_webview(window_id: u64, webview_native_id: u64);
-
-        // ---- webviews (qt_webview.cpp) ----
-        fn qt_webview_create(window_id: u64, url: &str) -> u64;
-        /// Injects a tauri initialization script at document creation.
-        fn qt_webview_add_init_script(id: u64, script: &str, main_frame_only: bool);
-        fn qt_webview_native_handle(id: u64) -> u64;
-        fn qt_webview_navigate(id: u64, url: &str);
-        fn qt_webview_url(id: u64) -> String;
-        fn qt_webview_reload(id: u64);
-        fn qt_webview_eval(id: u64, script: &str);
-        fn qt_webview_set_zoom(id: u64, factor: f64);
-        fn qt_webview_set_background_color(id: u64, r: i32, g: i32, b: i32, a: i32);
-        fn qt_webview_show(id: u64);
-        fn qt_webview_hide(id: u64);
-        fn qt_webview_set_bounds(id: u64, x: i32, y: i32, width: i32, height: i32);
-        fn qt_webview_open_devtools(id: u64);
-        fn qt_webview_close_devtools(id: u64);
-        fn qt_webview_is_devtools_open(id: u64) -> bool;
-        fn qt_webview_print(id: u64);
-        fn qt_webview_close(id: u64);
 
         // ---- custom schemes (qt_scheme.cpp) ----
         /// Registers ipc/tauri/asset schemes; must run before the QApplication.

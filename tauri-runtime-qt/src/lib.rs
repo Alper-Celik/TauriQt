@@ -26,6 +26,8 @@ use tauri_runtime::{
 use tauri_utils::config::{Color, WindowConfig};
 use tauri_utils::Theme;
 
+pub mod bridge;
+pub mod ops;
 pub mod qt;
 
 /// Invoke system for this runtime.
@@ -116,7 +118,7 @@ fn build_window<T: UserEvent>(
     label: String,
     builder: QtWindowBuilder,
 ) -> Result<(WindowId, QtWindowDispatcher)> {
-    let native = qt::ffi::qt_window_create(
+    let native = bridge::window::ffi::qt_window_create(
         &label,
         &builder.title,
         builder.width as i32,
@@ -128,10 +130,10 @@ fn build_window<T: UserEvent>(
         return Err(Error::CreateWindow);
     }
     if builder.maximized {
-        qt::ffi::qt_window_set_maximized(native, true);
+        bridge::window::ffi::qt_window_set_maximized(native, true);
     }
     if builder.center {
-        qt::ffi::qt_window_center(native);
+        bridge::window::ffi::qt_window_center(native);
     }
     if let Some((x, y)) = builder.position {
         let _ = (x, y); // M4: absolute positioning is a no-op on Wayland.
@@ -152,23 +154,23 @@ fn build_webview<T: UserEvent>(
     let pending_url = pending.url.clone();
     // Create the view without navigating, inject tauri's initialization scripts
     // (they define `window.__TAURI_INTERNALS__`, i.e. `invoke`), then navigate.
-    let native = qt::ffi::qt_webview_create(window_native, "");
+    let native = bridge::webview::ffi::qt_webview_create(window_native, "");
     if native == 0 {
         return Err(Error::CreateWebview(
             "qt_webview_create returned a null handle".into(),
         ));
     }
-    qt::ffi::qt_window_attach_webview(window_native, qt::ffi::qt_webview_native_handle(native));
+    bridge::window::ffi::qt_window_attach_webview(window_native, bridge::webview::ffi::qt_webview_native_handle(native));
     SCHEME_PROTOCOLS
         .lock()
         .push((native, label.clone(), pending.uri_scheme_protocols));
     qt::ffi::qt_scheme_install_handler(native);
 
     for script in &pending.webview_attributes.initialization_scripts {
-        qt::ffi::qt_webview_add_init_script(native, &script.script, script.for_main_frame_only);
+        bridge::webview::ffi::qt_webview_add_init_script(native, &script.script, script.for_main_frame_only);
     }
     if !pending_url.is_empty() {
-        qt::ffi::qt_webview_navigate(native, &pending_url);
+        bridge::webview::ffi::qt_webview_navigate(native, &pending_url);
     }
     #[cfg(debug_assertions)]
     eprintln!(
@@ -634,98 +636,77 @@ impl<T: UserEvent> rt::WebviewDispatch<T> for QtWebviewDispatcher {
 
     #[cfg(any(debug_assertions, feature = "devtools"))]
     fn open_devtools(&self) {
-        qt::ffi::qt_webview_open_devtools(self.native);
+        ops::webview::open_devtools(self.native);
     }
 
     #[cfg(any(debug_assertions, feature = "devtools"))]
     fn close_devtools(&self) {
-        qt::ffi::qt_webview_close_devtools(self.native);
+        ops::webview::close_devtools(self.native);
     }
 
     #[cfg(any(debug_assertions, feature = "devtools"))]
     fn is_devtools_open(&self) -> Result<bool> {
-        Ok(qt::ffi::qt_webview_is_devtools_open(self.native))
+        ops::webview::is_devtools_open(self.native)
     }
 
     fn url(&self) -> Result<String> {
-        Ok(qt::ffi::qt_webview_url(self.native))
+        ops::webview::url(self.native)
     }
 
     fn bounds(&self) -> Result<rt::dpi::Rect> {
-        // Geometry is layout-managed by Qt; report the origin for the MVP.
-        Ok(rt::dpi::Rect {
-            position: rt::dpi::Position::Physical(rt::dpi::PhysicalPosition::new(0, 0)),
-            size: rt::dpi::Size::Physical(rt::dpi::PhysicalSize::new(0, 0)),
-        })
+        ops::webview::bounds(self.native)
     }
 
     fn position(&self) -> Result<rt::dpi::PhysicalPosition<i32>> {
-        Ok(rt::dpi::PhysicalPosition::new(0, 0))
+        ops::webview::position(self.native)
     }
 
     fn size(&self) -> Result<rt::dpi::PhysicalSize<u32>> {
-        Ok(rt::dpi::PhysicalSize::new(0, 0))
+        ops::webview::size(self.native)
     }
 
     fn navigate(&self, url: url::Url) -> Result<()> {
-        qt::ffi::qt_webview_navigate(self.native, url.as_str());
-        Ok(())
+        ops::webview::navigate(self.native, url.as_str())
     }
 
     fn reload(&self) -> Result<()> {
-        qt::ffi::qt_webview_reload(self.native);
-        Ok(())
+        ops::webview::reload(self.native)
     }
 
     fn print(&self) -> Result<()> {
-        qt::ffi::qt_webview_print(self.native);
-        Ok(())
+        ops::webview::print(self.native)
     }
 
     fn close(&self) -> Result<()> {
-        qt::ffi::qt_webview_close(self.native);
-        Ok(())
+        ops::webview::close(self.native)
     }
 
     fn set_bounds(&self, bounds: rt::dpi::Rect) -> Result<()> {
-        let (x, y) = match bounds.position {
-            rt::dpi::Position::Physical(p) => (p.x, p.y),
-            rt::dpi::Position::Logical(p) => (p.x as i32, p.y as i32),
-        };
-        let (w, h) = match bounds.size {
-            rt::dpi::Size::Physical(s) => (s.width as i32, s.height as i32),
-            rt::dpi::Size::Logical(s) => (s.width as i32, s.height as i32),
-        };
-        qt::ffi::qt_webview_set_bounds(self.native, x, y, w, h);
-        Ok(())
+        ops::webview::set_bounds(self.native, bounds)
     }
 
-    fn set_size(&self, _size: rt::dpi::Size) -> Result<()> {
-        // MVP: the view fills the window; Qt's layout owns the geometry.
-        Ok(())
+    fn set_size(&self, size: rt::dpi::Size) -> Result<()> {
+        ops::webview::set_size(self.native, size)
     }
 
-    fn set_position(&self, _position: rt::dpi::Position) -> Result<()> {
-        Ok(())
+    fn set_position(&self, position: rt::dpi::Position) -> Result<()> {
+        ops::webview::set_position(self.native, position)
     }
 
     fn set_focus(&self) -> Result<()> {
-        Ok(())
+        ops::webview::set_focus(self.native)
     }
 
     fn hide(&self) -> Result<()> {
-        qt::ffi::qt_webview_hide(self.native);
-        Ok(())
+        ops::webview::hide(self.native)
     }
 
     fn show(&self) -> Result<()> {
-        qt::ffi::qt_webview_show(self.native);
-        Ok(())
+        ops::webview::show(self.native)
     }
 
     fn eval_script<S: Into<String>>(&self, script: S) -> Result<()> {
-        qt::ffi::qt_webview_eval(self.native, &script.into());
-        Ok(())
+        ops::webview::eval(self.native, &script.into())
     }
 
     fn eval_script_with_callback<S: Into<String>>(
@@ -733,69 +714,46 @@ impl<T: UserEvent> rt::WebviewDispatch<T> for QtWebviewDispatcher {
         script: S,
         callback: impl Fn(String) + Send + 'static,
     ) -> Result<()> {
-        // M1: needs a Rust-callback bridge over QWebEnginePage::runJavaScript.
-        let _ = (script.into(), callback);
-        Err(Error::CreateWebview(
-            "eval_script_with_callback is not implemented yet".into(),
-        ))
+        ops::webview::eval_with_callback(self.native, &script.into(), callback)
     }
 
-    fn reparent(&self, _window_id: WindowId) -> Result<()> {
-        Err(Error::CreateWebview(
-            "reparent is not implemented yet".into(),
-        ))
+    fn reparent(&self, window_id: WindowId) -> Result<()> {
+        ops::webview::reparent(self.native, window_native_of(window_id)?)
     }
 
     fn cookies_for_url(&self, _url: url::Url) -> Result<Vec<Cookie<'static>>> {
-        Err(Error::CreateWebview(
-            "cookies need an async QWebEngineCookieStore round-trip".into(),
-        ))
+        // Deferred: Qt's cookie store is asynchronous with no completion signal
+        // (see PLAN-WORKERS.md, "W4 design note").
+        Err(ops::unimplemented("WebviewDispatch::cookies_for_url"))
     }
 
     fn cookies(&self) -> Result<Vec<Cookie<'static>>> {
-        Err(Error::CreateWebview(
-            "cookies need an async QWebEngineCookieStore round-trip".into(),
-        ))
+        Err(ops::unimplemented("WebviewDispatch::cookies"))
     }
 
     fn set_cookie(&self, _cookie: cookie::Cookie<'_>) -> Result<()> {
-        Err(Error::CreateWebview(
-            "set_cookie is not implemented yet".into(),
-        ))
+        Err(ops::unimplemented("WebviewDispatch::set_cookie"))
     }
 
     fn delete_cookie(&self, _cookie: cookie::Cookie<'_>) -> Result<()> {
-        Err(Error::CreateWebview(
-            "delete_cookie is not implemented yet".into(),
-        ))
+        Err(ops::unimplemented("WebviewDispatch::delete_cookie"))
     }
 
     fn set_auto_resize(&self, _auto_resize: bool) -> Result<()> {
+        // The view fills the window through Qt's layout; nothing to toggle yet.
         Ok(())
     }
 
     fn set_zoom(&self, scale_factor: f64) -> Result<()> {
-        qt::ffi::qt_webview_set_zoom(self.native, scale_factor);
-        Ok(())
+        ops::webview::set_zoom(self.native, scale_factor)
     }
 
     fn set_background_color(&self, color: Option<Color>) -> Result<()> {
-        if let Some(Color(r, g, b, a)) = color {
-            qt::ffi::qt_webview_set_background_color(
-                self.native,
-                r as i32,
-                g as i32,
-                b as i32,
-                a as i32,
-            );
-        }
-        Ok(())
+        ops::webview::set_background_color(self.native, color)
     }
 
     fn clear_all_browsing_data(&self) -> Result<()> {
-        Err(Error::CreateWebview(
-            "clear_all_browsing_data is not implemented yet".into(),
-        ))
+        ops::webview::clear_all_browsing_data(self.native)
     }
 }
 
@@ -813,91 +771,135 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn scale_factor(&self) -> Result<f64> {
-        Ok(qt::ffi::qt_window_scale_factor(self.native))
+        ops::window::scale_factor(self.native)
     }
 
     fn inner_position(&self) -> Result<rt::dpi::PhysicalPosition<i32>> {
-        Ok(rt::dpi::PhysicalPosition::new(0, 0))
+        ops::window::inner_position(self.native)
     }
 
     fn outer_position(&self) -> Result<rt::dpi::PhysicalPosition<i32>> {
-        Ok(rt::dpi::PhysicalPosition::new(0, 0))
+        ops::window::outer_position(self.native)
     }
 
     fn inner_size(&self) -> Result<rt::dpi::PhysicalSize<u32>> {
-        Ok(rt::dpi::PhysicalSize::new(0, 0))
+        ops::window::inner_size(self.native)
     }
 
     fn outer_size(&self) -> Result<rt::dpi::PhysicalSize<u32>> {
-        Ok(rt::dpi::PhysicalSize::new(0, 0))
+        ops::window::outer_size(self.native)
     }
 
     fn is_fullscreen(&self) -> Result<bool> {
-        Ok(false)
+        ops::window::is_fullscreen(self.native)
     }
 
     fn is_minimized(&self) -> Result<bool> {
-        Ok(false)
+        ops::window::is_minimized(self.native)
     }
 
     fn is_maximized(&self) -> Result<bool> {
-        Ok(false)
+        ops::window::is_maximized(self.native)
     }
 
     fn is_focused(&self) -> Result<bool> {
-        Ok(false)
+        ops::window::is_focused(self.native)
     }
 
     fn is_decorated(&self) -> Result<bool> {
-        Ok(true)
+        ops::window::is_decorated(self.native)
     }
 
     fn is_resizable(&self) -> Result<bool> {
-        Ok(true)
+        ops::window::is_resizable(self.native)
+    }
+
+    fn is_visible(&self) -> Result<bool> {
+        ops::window::is_visible(self.native)
+    }
+
+    fn is_enabled(&self) -> Result<bool> {
+        ops::window::is_enabled(self.native)
+    }
+
+    fn is_always_on_top(&self) -> Result<bool> {
+        ops::window::is_always_on_top(self.native)
+    }
+
+    fn title(&self) -> Result<String> {
+        ops::window::title(self.native)
+    }
+
+    fn theme(&self) -> Result<Theme> {
+        ops::window::theme(self.native)
+    }
+
+    fn center(&self) -> Result<()> {
+        ops::window::center(self.native)
+    }
+
+    fn minimize(&self) -> Result<()> {
+        ops::window::minimize(self.native)
+    }
+
+    fn unminimize(&self) -> Result<()> {
+        ops::window::unminimize(self.native)
+    }
+
+    fn show(&self) -> Result<()> {
+        ops::window::show(self.native)
+    }
+
+    fn hide(&self) -> Result<()> {
+        ops::window::hide(self.native)
+    }
+
+    fn close(&self) -> Result<()> {
+        ops::window::close(self.native)
+    }
+
+    fn destroy(&self) -> Result<()> {
+        ops::window::destroy(self.native)
+    }
+
+    fn set_focus(&self) -> Result<()> {
+        ops::window::set_focus(self.native)
+    }
+
+    fn start_dragging(&self) -> Result<()> {
+        ops::window::start_dragging(self.native)
     }
 
     fn is_maximizable(&self) -> Result<bool> {
+        // The trait documents this as unsupported on Linux (no native maximize
+        // button state), so this reports the capability, not a measured state.
         Ok(true)
     }
 
     fn is_minimizable(&self) -> Result<bool> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(true)
     }
 
     fn is_closable(&self) -> Result<bool> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(true)
-    }
-
-    fn is_visible(&self) -> Result<bool> {
-        Ok(qt::ffi::qt_window_is_visible(self.native))
-    }
-
-    fn is_enabled(&self) -> Result<bool> {
-        Ok(true)
-    }
-
-    fn is_always_on_top(&self) -> Result<bool> {
-        Ok(false)
-    }
-
-    fn title(&self) -> Result<String> {
-        Ok(String::new())
     }
 
     fn current_monitor(&self) -> Result<Option<Monitor>> {
-        Ok(None)
+        ops::screen::monitor_for_window(self.native)
     }
 
     fn primary_monitor(&self) -> Result<Option<Monitor>> {
-        Ok(None)
+        ops::screen::primary_monitor()
     }
 
-    fn monitor_from_point(&self, _x: f64, _y: f64) -> Result<Option<Monitor>> {
-        Ok(None)
+    fn monitor_from_point(&self, x: f64, y: f64) -> Result<Option<Monitor>> {
+        ops::screen::monitor_from_point(x, y)
     }
 
     fn available_monitors(&self) -> Result<Vec<Monitor>> {
-        Ok(Vec::new())
+        ops::screen::available_monitors()
     }
 
     #[cfg(any(
@@ -908,6 +910,7 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
         target_os = "openbsd"
     ))]
     fn gtk_window(&self) -> Result<gtk::ApplicationWindow> {
+        // No GTK window exists in a Qt runtime; use `window_handle`.
         Err(Error::CreateWindow)
     }
 
@@ -923,21 +926,11 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn window_handle(&self) -> std::result::Result<WindowHandle<'_>, HandleError> {
-        // M2: X11 (QX11Application) / Wayland (QWaylandApplication) display handle.
-        Err(HandleError::Unavailable)
-    }
-
-    fn theme(&self) -> Result<Theme> {
-        Ok(Theme::Light)
-    }
-
-    fn center(&self) -> Result<()> {
-        qt::ffi::qt_window_center(self.native);
-        Ok(())
+        ops::runtime::window_handle(self.native)
     }
 
     fn request_user_attention(&self, _request_type: Option<UserAttentionType>) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::request_user_attention"))
     }
 
     fn create_window<F: Fn(RawWindow) + Send + 'static>(
@@ -955,96 +948,68 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
         build_webview::<T>(self.native, pending)
     }
 
-    fn set_resizable(&self, _resizable: bool) -> Result<()> {
-        Ok(())
+    fn set_resizable(&self, resizable: bool) -> Result<()> {
+        ops::window::set_resizable(self.native, resizable)
     }
 
-    fn set_enabled(&self, _enabled: bool) -> Result<()> {
-        Ok(())
+    fn set_enabled(&self, enabled: bool) -> Result<()> {
+        ops::window::set_enabled(self.native, enabled)
     }
 
     fn set_maximizable(&self, _maximizable: bool) -> Result<()> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
 
     fn set_minimizable(&self, _minimizable: bool) -> Result<()> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
 
     fn set_closable(&self, _closable: bool) -> Result<()> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
 
     fn set_title<S: Into<String>>(&self, title: S) -> Result<()> {
-        qt::ffi::qt_window_set_title(self.native, &title.into());
-        Ok(())
+        ops::window::set_title(self.native, &title.into())
     }
 
     fn maximize(&self) -> Result<()> {
-        qt::ffi::qt_window_set_maximized(self.native, true);
-        Ok(())
+        ops::window::set_maximized(self.native, true)
     }
 
     fn unmaximize(&self) -> Result<()> {
-        qt::ffi::qt_window_set_maximized(self.native, false);
-        Ok(())
-    }
-
-    fn minimize(&self) -> Result<()> {
-        Ok(())
-    }
-
-    fn unminimize(&self) -> Result<()> {
-        Ok(())
-    }
-
-    fn show(&self) -> Result<()> {
-        qt::ffi::qt_window_show(self.native);
-        Ok(())
-    }
-
-    fn hide(&self) -> Result<()> {
-        qt::ffi::qt_window_hide(self.native);
-        Ok(())
-    }
-
-    fn close(&self) -> Result<()> {
-        qt::ffi::qt_window_close(self.native);
-        Ok(())
-    }
-
-    fn destroy(&self) -> Result<()> {
-        qt::ffi::qt_window_close(self.native);
-        Ok(())
+        ops::window::set_maximized(self.native, false)
     }
 
     fn set_decorations(&self, decorations: bool) -> Result<()> {
-        qt::ffi::qt_window_set_decorations(self.native, decorations);
-        Ok(())
+        ops::window::set_decorations(self.native, decorations)
     }
 
     fn set_shadow(&self, _enable: bool) -> Result<()> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
 
-    fn set_always_on_bottom(&self, _always_on_bottom: bool) -> Result<()> {
-        Ok(())
+    fn set_always_on_bottom(&self, always_on_bottom: bool) -> Result<()> {
+        ops::window::set_always_on_bottom(self.native, always_on_bottom)
     }
 
-    fn set_always_on_top(&self, _always_on_top: bool) -> Result<()> {
-        Ok(())
+    fn set_always_on_top(&self, always_on_top: bool) -> Result<()> {
+        ops::window::set_always_on_top(self.native, always_on_top)
     }
 
     fn set_visible_on_all_workspaces(&self, _visible_on_all_workspaces: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_visible_on_all_workspaces"))
     }
 
-    fn set_background_color(&self, _color: Option<Color>) -> Result<()> {
-        Ok(())
+    fn set_background_color(&self, color: Option<Color>) -> Result<()> {
+        ops::window::set_background_color(self.native, color)
     }
 
     fn set_content_protected(&self, _protected: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_content_protected"))
     }
 
     fn set_size(&self, size: rt::dpi::Size) -> Result<()> {
@@ -1052,104 +1017,111 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
             rt::dpi::Size::Physical(s) => (s.width as i32, s.height as i32),
             rt::dpi::Size::Logical(s) => (s.width as i32, s.height as i32),
         };
-        qt::ffi::qt_window_set_size(self.native, w, h);
-        Ok(())
+        ops::window::set_size(self.native, w, h)
     }
 
-    fn set_min_size(&self, _size: Option<rt::dpi::Size>) -> Result<()> {
-        Ok(())
+    fn set_min_size(&self, size: Option<rt::dpi::Size>) -> Result<()> {
+        ops::window::set_min_size(self.native, size)
     }
 
-    fn set_max_size(&self, _size: Option<rt::dpi::Size>) -> Result<()> {
-        Ok(())
+    fn set_max_size(&self, size: Option<rt::dpi::Size>) -> Result<()> {
+        ops::window::set_max_size(self.native, size)
     }
 
-    fn set_size_constraints(&self, _constraints: WindowSizeConstraints) -> Result<()> {
-        Ok(())
+    fn set_size_constraints(&self, constraints: WindowSizeConstraints) -> Result<()> {
+        ops::window::set_size_constraints(self.native, constraints)
     }
 
-    fn set_position(&self, _position: rt::dpi::Position) -> Result<()> {
-        // Wayland does not allow absolute positioning.
-        Ok(())
+    fn set_position(&self, position: rt::dpi::Position) -> Result<()> {
+        ops::window::set_position(self.native, position)
     }
 
-    fn set_fullscreen(&self, _fullscreen: bool) -> Result<()> {
-        Ok(())
+    fn set_fullscreen(&self, fullscreen: bool) -> Result<()> {
+        ops::window::set_fullscreen(self.native, fullscreen)
     }
 
     fn set_fullscreen_on_monitor(&self, _position: rt::dpi::PhysicalPosition<f64>) -> Result<()> {
-        Ok(())
-    }
-
-    fn set_focus(&self) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_fullscreen_on_monitor"))
     }
 
     fn set_focusable(&self, _focusable: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_focusable"))
     }
 
-    fn set_icon(&self, _icon: Icon) -> Result<()> {
-        Ok(())
+    fn set_icon(&self, icon: Icon) -> Result<()> {
+        ops::window::set_icon(self.native, icon)
     }
 
     fn set_skip_taskbar(&self, _skip: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_skip_taskbar"))
     }
 
     fn set_cursor_grab(&self, _grab: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_cursor_grab"))
     }
 
     fn set_cursor_visible(&self, _visible: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_cursor_visible"))
     }
 
     fn set_cursor_icon(&self, _icon: CursorIcon) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_cursor_icon"))
     }
 
     fn set_cursor_position<Pos: Into<rt::dpi::Position>>(&self, _position: Pos) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_cursor_position"))
     }
 
     fn set_ignore_cursor_events(&self, _ignore: bool) -> Result<()> {
-        Ok(())
+        Err(ops::unimplemented("WindowDispatch::set_ignore_cursor_events"))
     }
 
-    fn start_dragging(&self) -> Result<()> {
-        Ok(())
-    }
-
-    fn start_resize_dragging(&self, _direction: ResizeDirection) -> Result<()> {
-        Ok(())
+    fn start_resize_dragging(&self, direction: ResizeDirection) -> Result<()> {
+        let direction = match direction {
+            ResizeDirection::East => 1,
+            ResizeDirection::North => 2,
+            ResizeDirection::NorthEast => 3,
+            ResizeDirection::NorthWest => 4,
+            ResizeDirection::South => 5,
+            ResizeDirection::SouthEast => 6,
+            ResizeDirection::SouthWest => 7,
+            ResizeDirection::West => 8,
+        };
+        ops::window::start_resize_dragging(self.native, direction)
     }
 
     fn set_badge_count(&self, _count: Option<i64>, _desktop_filename: Option<String>) -> Result<()> {
+        // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
 
     fn set_badge_label(&self, _label: Option<String>) -> Result<()> {
+        // macOS-only per the trait documentation.
         Ok(())
     }
 
     fn set_overlay_icon(&self, _icon: Option<Icon>) -> Result<()> {
+        // Windows-only per the trait documentation.
         Ok(())
     }
 
     fn set_progress_bar(&self, _progress_state: ProgressBarState) -> Result<()> {
+        // Needs libunity on Linux; unsupported by the trait documentation.
         Ok(())
     }
 
     fn set_title_bar_style(&self, _style: tauri_utils::TitleBarStyle) -> Result<()> {
+        // macOS-only per the trait documentation.
         Ok(())
     }
 
     fn set_traffic_light_position(&self, _position: rt::dpi::Position) -> Result<()> {
+        // macOS-only per the trait documentation.
         Ok(())
     }
 
     fn set_theme(&self, _theme: Option<Theme>) -> Result<()> {
+        // Linux: app-wide; handled by `Runtime::set_theme`.
         Ok(())
     }
 }

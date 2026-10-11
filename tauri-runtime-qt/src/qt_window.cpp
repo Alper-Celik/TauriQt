@@ -13,6 +13,7 @@
 // `qt_on_window_event` callback with the linkage cxx expects, so it must not
 // be hand-declared here.
 #include "tauri-runtime-qt/src/qt.rs.h"
+#include "tauri-runtime-qt/src/bridge/window.rs.h"
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QPointer>

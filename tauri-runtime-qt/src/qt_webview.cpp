@@ -10,6 +10,7 @@
 
 #include "qt_scheme.hpp"
 #include "tauri-runtime-qt/src/qt.rs.h"
+#include "tauri-runtime-qt/src/bridge/webview.rs.h"
 
 #include <QtCore/QByteArray>
 #include <QtCore/QObject>
