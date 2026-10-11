@@ -321,10 +321,11 @@ dump_tree() {
   local tag="$1"
   local file="$WORK/tree-$tag.json"
   swaymsg -t get_tree -r >"$file" 2>/dev/null || true
-  echo "  info tree dump         : $file"
-  jq -r '[.. | objects | select(.shell? == "xdg_shell")
-          | "app_id=\(.app_id // "-") name=\(.name // "-") rect=\(.rect.width)x\(.rect.height)"] | .[]' \
-    "$file" 2>/dev/null | head -10 | sed 's/^/  info toplevel          : /'
+  echo "  info tree dump         : $file ($(wc -c <"$file" 2>/dev/null || echo 0) bytes)"
+  echo "  info xdg_shell nodes   : $(jq '[.. | objects | select(.shell? == "xdg_shell")] | length' "$file" 2>/dev/null || echo '?')"
+  jq -r '[.. | objects | select(has("pid"))
+          | "type=\(.type // "-") shell=\(.shell // "-") app_id=\(.app_id // "-") pid=\(.pid) name=\((.name // "-") | .[0:28])"] | .[]' \
+    "$file" 2>/dev/null | head -12 | sed 's/^/  info node              : /'
   echo "  info app log (first 5) :"
   head -5 "$APP_LOG" 2>/dev/null | sed 's/^/  info   /'
 }
@@ -334,8 +335,15 @@ dump_tree() {
 check_state_oracle() {
   section "(a) state oracle: compositor drives, runtime reports"
 
-  local node
-  node="$(app_tree)"
+  # The compositor is the oracle, but a freshly mapped toplevel can lag the app's
+  # own "demo finished" signal by a frame or two, so look for it for a moment
+  # before declaring it missing.
+  local node i
+  for i in $(seq 1 50); do
+    node="$(app_tree)"
+    [[ -n "$node" && "$node" != "null" ]] && break
+    sleep 0.1
+  done
   if [[ -z "$node" || "$node" == "null" ]]; then
     dump_tree app-not-found
     fail "compositor sees no xdg_shell toplevel for the app"

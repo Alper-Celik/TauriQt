@@ -1,11 +1,22 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
 // SPDX-License-Identifier: MIT
 
-//! No-op skeleton of a Qt-based runtime for Tauri (PLAN.md M4, step 1).
+//! A Qt runtime for Tauri 2 on Linux: Qt windowing replaces tao, QtWebEngine
+//! replaces WebKitGTK. The crate implements `tauri_runtime::Runtime`, so an app
+//! selects it at the type level (`tauri::Builder::<QtRuntime>::new()`) and does
+//! not enable tauri's `wry` feature on Linux. See README.md for the wiring an
+//! app has to add, and RUNTIME-TRAITS.md for the Qt mapping of every trait
+//! method.
 //!
-//! All trait methods are implemented with `todo!()` placeholders or functional
-//! no-ops so the crate compiles against the full `tauri-runtime` surface.
-//! Qt mappings for each method are documented in RUNTIME-TRAITS.md.
+//! Two items outside the stock trait surface exist for the app to use:
+//!
+//! - [`INVOKE_SYSTEM_SCRIPT`]: QtWebEngine never delivers custom-protocol POST
+//!   bodies, so the invoke payload travels in a header instead. Pass it with
+//!   [`tauri::Builder::invoke_system`].
+//! - [`platform_name`]: which Qt platform plugin is running (`"wayland"`,
+//!   `"xcb"`, `"offscreen"`, …), for apps that must adapt to platform gaps —
+//!   a Wayland toplevel has no global coordinates, so the position getters and
+//!   `set_position` return errors there by design (docs/nix-qt-gotchas.md).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
