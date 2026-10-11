@@ -49,9 +49,16 @@ class Cdp {
   constructor(ws) { this.ws = ws; this.id = 0; this.pending = new Map(); }
   static async connect(url) {
     const ws = new WebSocket(url);
+    // Bound the handshake too: a target that accepts TCP but never completes the
+    // upgrade used to hang this script (and anything waiting on it) forever.
     await new Promise((resolve, reject) => {
-      ws.addEventListener('open', resolve, { once: true });
-      ws.addEventListener('error', (e) => reject(new Error(`websocket: ${e.message ?? 'error'}`)), { once: true });
+      const timer = setTimeout(() => {
+        try { ws.close(); } catch { /* already gone */ }
+        reject(new Error(`websocket connect timed out after ${args.timeoutMs} ms`));
+      }, args.timeoutMs);
+      const done = (fn) => (value) => { clearTimeout(timer); fn(value); };
+      ws.addEventListener('open', done(resolve), { once: true });
+      ws.addEventListener('error', done((e) => reject(new Error(`websocket: ${e.message ?? 'error'}`))), { once: true });
     });
     const client = new Cdp(ws);
     ws.addEventListener('message', (event) => {

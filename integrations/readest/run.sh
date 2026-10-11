@@ -32,7 +32,7 @@ export QTWEBENGINE_REMOTE_DEBUGGING="${QTWEBENGINE_REMOTE_DEBUGGING:-9222}"
 export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox --disable-gpu --disable-gpu-compositing}"
 # A build sandbox has no display; callers that have one (or a headless sway
 # session) override this.
-# export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
 cleanup() {
   [[ -n "${DEV_PID:-}" ]] && kill "$DEV_PID" 2>/dev/null || true
