@@ -373,3 +373,17 @@ What this buys for automated testing on this runtime:
   latter as working).
 * Only the `tauri://localhost/` page on QtWebEngine 6.11.2 was measured; Qt
   dev-branch behaviour may differ.
+
+## Second data point: a third-party app (Readest, 2026-10-11)
+
+The same battery was later run against a large application this repository did not write —
+Readest on `tauri-runtime-qt` (`integrations/readest/check.mjs` opens it; the run is recorded
+in `integrations/readest/README.md`). Result: **62 commands → 55 results, 7 errors, 0
+timeouts**, 1175 events recorded, and the seven failures are exactly the Qt gaps listed in the
+matrix above (`Browser.getWindowForTarget`, `Browser.getWindowBounds`, `Page.printToPDF`, and
+the browser-context family: `Browser.setDownloadBehavior`, `Target.getBrowserContexts`,
+`Storage.getCookies`, `Browser.getBrowserCommandLine`). So the matrix is a property of the
+engine, not of the demo page — and the same caveat applies: anything that needs a *new*
+target (`Target.createTarget`, Playwright's `context.newPage()`) has no path here, which is
+also what blocks WebDriver-driven suites
+([webdriver-attach-findings.md](webdriver-attach-findings.md)).

@@ -185,3 +185,12 @@ real), `wlr-foreign-toplevel-management` (state + `set_rectangle` hints, still n
 - **EventLoopProxy (W6)**: must be safe from any thread; queue + `invokeMethod(QueuedConnection)`.
 - **Bridge growth**: 6 bridge files mean 6 generated headers; build.rs globbing keeps this free,
   but each worker must include only its own header in C++.
+
+## Later rounds (same day)
+
+| Worker | Task | Outcome |
+|---|---|---|
+| CA1 | extract the Qt-free logic into `tauri-runtime-qt-core` | new crate (no Qt, no `cxx`, no build script), runtime delegates to it, **65 unit tests** pass; `tauriqt` build, smoke and the packaged app unchanged |
+| CB1 | merged llvm coverage pipeline | `scripts/coverage.sh` + `just coverage` + a CI job: instrumented build → harness runs (`TAURIQT_EXIT_AFTER_MS` for a clean profile flush) → `llvm-profdata` merge → one lcov for Rust **and** C++ → genhtml + ReportGenerator (`Html;Badges`). Measured: lines 47.9 % (1962/4095), functions 45.8 %, branches 27.2 % |
+| CO1 | why the compositor never saw a window | **not a runtime bug**: the nix *build sandbox* has no `/dev/dri`, so QtWayland reports `EGL not available`, the `QQuickWidget`-backed top-level never commits a `wl_buffer` and sway never maps it. The oracle now skips those assertions fail-closed (quoting the evidence) and `ORACLE_REQUIRE_MAPPING=1` forbids skipping; on a host with DRM the same harness maps the window (36 passed / 1 failed, the failure being `app_id`) |
+| — | third-party app tier | `integrations/` runs other people's apps: Readest boots on this runtime, `invoke()` reaches its Rust, its own 183-test suite passes. Its WebDriver-driven e2e cannot run — QtWebEngine has no `Target.createTarget` (docs/webdriver-attach-findings.md) |

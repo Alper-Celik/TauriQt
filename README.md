@@ -7,7 +7,7 @@ wry — an app picks it at the type level.
 > **Fully vibe coded, in a day.** Every line in this repository — the C++ Qt side, the
 > Rust runtime, the demo, the harnesses — was written by an LLM agent, driven by the
 > specification the author wrote and the checks that grade it, and the whole thing landed
-> in a single day (all 47 commits are dated 2026-10-11). Nobody has read it line by line.
+> in a single day (every commit in it is dated 2026-10-11). Nobody has read it line by line.
 > It is working code, not reviewed code — the checks below exist precisely because the
 > code was not audited by hand.
 
@@ -16,9 +16,12 @@ wry — an app picks it at the type level.
 | Piece | Contains |
 |---|---|
 | `tauri-runtime-qt/` | The runtime crate. Rust implements `tauri_runtime::Runtime`; `qt_*.cpp/hpp` are the Qt side (`QApplication`, `QWindow`/`QWidget`, `QWebEngineView`, URL-scheme handlers, cookies, screens), bridged with `cxx` + `qt-build-utils` |
+| `tauri-runtime-qt-core/` | The Qt-free half of the runtime (cookie matching, scheme encode/decode, geometry and builder conversions). No Qt, no `cxx`, no build script — so it links and runs as a normal crate with `cargo test` |
 | `tauriqt/` | The demo app — a real Tauri 2 app and the living integration test |
 | `dist/` | Demo frontend (probes every command and reports a verdict) |
-| `scripts/`, `tools/` | Harnesses (smoke, headless Wayland, compositor oracle, CDP, WebDriver) |
+| `scripts/`, `tools/` | Harnesses (smoke, headless Wayland, compositor oracle, CDP, WebDriver) and coverage (`scripts/coverage.sh`) |
+| `integrations/` | Other people's apps run against this runtime, their tests as the judge |
+| `.github/workflows/ci.yml` | CI: eval → lint → checks → coverage, plus a gated tier for those apps |
 | `flake.nix`, `justfile` | Dev environment (merged Qt prefix + qmake shim) and recipes |
 
 Status by milestone lives in [PLAN.md](PLAN.md); the per-method Qt mapping in
@@ -74,6 +77,11 @@ The runtime itself is constructed by tauri through the `Runtime` trait, so nothi
 `QtRuntime::new()` by hand. On Wayland, read `tauri_runtime_qt::platform_name()` if you
 must adapt to what the platform cannot answer (below).
 
+If your app pins an older `tauri-runtime` (a vendored 2.11, say — Readest does), take this
+crate with `default-features = false`: its default `tauri-runtime-2-12` feature supplies
+`WindowDispatch::set_fullscreen_on_monitor`, which only exists in 2.12 and is a
+compile error against anything older.
+
 **3. Build and run** (Qt comes from the flake, hence the qmake shim):
 
 ```bash
@@ -105,7 +113,7 @@ make "choose the Qt runtime" the sanctioned form of exactly this wiring.
 ## Verification
 
 Everything here is graded by running the app, not by reading it. Checks are flake
-checks on `aarch64-linux` (`. #checks.<system>.{smoke,wayland-smoke,sway-oracle}`) and the
+checks on `aarch64-linux` (`.#checks.<system>.{smoke,wayland-smoke,sway-oracle}`) and the
 same harnesses run locally through the recipes:
 
 | Recipe | What it proves |
@@ -116,7 +124,16 @@ same harnesses run locally through the recipes:
 | `just test-cdp` | CDP command matrix + Playwright attach (see docs/cdp-support-matrix.md) |
 | `just test-webdriver` | chromedriver attach + WebDriver endpoint battery |
 | `just test` | smoke + wayland + oracle in parallel |
+| `just coverage` | instrumented build → harness runs → merged llvm lcov for Rust **and** C++, `genhtml` + ReportGenerator HTML |
 | `just ci-all` / `lint` | REUSE licence lint, `cargo fmt --check`, `cargo clippy -D warnings` |
+
+Two honest caveats, both measured rather than assumed: an environment that cannot give
+QtWebEngine a GL path (no `/dev/dri`, so no QRhi, so no committed `wl_buffer`) never gets a
+*mapped* window — the oracle reports that as a **skip with the evidence quoted**, fail-closed,
+and `ORACLE_REQUIRE_MAPPING=1` forbids skipping (see
+[docs/wayland-smoke-findings.md](docs/wayland-smoke-findings.md)); and `cargo clippy -D
+warnings` still carries pre-existing findings, so that half of `lint` is not currently green.
+The same harnesses run in CI for both systems.
 
 The demo page turns the result into a `DEMO_OK` / `DEMO_PARTIAL` window title, which the
 harnesses read — so the app grades itself, on the platform it is running on.

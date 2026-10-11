@@ -142,3 +142,13 @@ BASH_BIN="${BASH:-bash}"
 
 Related: a failed command substitution under `set -u` can hide the real error behind
 `unbound variable`; read such variables with `"${VAR:-}"` and fail with a clear message.
+
+## 9. Qt logs to syslog when stderr is not a terminal — and the harnesses redirect stderr
+
+Under `setsid` with redirected stdio (how every harness runs the app), Qt's message handler
+sends everything to syslog instead of stderr (`qtbase` `shouldLogToStderr()` →
+`syslog_default_message_handler`), so the app log looks like the runtime said nothing at all —
+including the `EGL not available` / `QRhi` failures that explain a missing window. Both
+harnesses now export `QT_FORCE_STDERR_LOGGING=1` (and `QT_LOGGING_RULES=qt.widgets.painting=true`
+for the flush path). Mechanism and quotes: [wayland-smoke-findings.md](wayland-smoke-findings.md),
+verdict 5.

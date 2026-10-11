@@ -7,6 +7,13 @@ Threading model for all traits: dispatchers must be `Send + Sync + Clone`; every
 marshals to the main thread via `QMetaObject::invokeMethod(..., QueuedConnection)` onto the
 runtime's dispatcher object. State lives in Qt objects; no manual locking.
 
+Where a mapping is *pure* — cookie matching, scheme request decode / response encode,
+geometry and DPR conversions, resize codes, `WindowConfig` → builder parameters — the code
+now lives in `tauri-runtime-qt-core`, with the Qt-side `ops/` (or `qt_*`) function a thin
+delegate. That crate has no Qt, no `cxx` and no build script, so its logic is testable with
+plain `cargo test -p tauri-runtime-qt-core` (65 unit tests today); the tables below name the
+Qt-side call.
+
 ---
 
 ## 1. `Runtime<T>` — 20 methods (required: all)

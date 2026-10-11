@@ -3,24 +3,33 @@
 Goal: a Qt-based runtime for Tauri 2 on Linux — Qt windowing (replace tao) + QtWebEngine
 (replace webkit2gtk), implemented as a custom `tauri::runtime::Runtime`.
 
-Status (2026-10-11):
+Status (2026-10-11, end of the day the repository was written):
 
 - **M0 done** — sample app (Rust → cxx-qt → `QApplication` + `QWebEngineView`, google.com)
-  runs buttery smooth on Wayland.
-- **M4 in progress** — `tauri-runtime-qt` implements the full trait surface and now backs it
-  with real Qt code: `QApplication` bootstrap + URL-scheme registration (`qt_app.cpp`),
-  window registry/geometry/events (`qt_window.cpp`), `QWebEngineView` lifecycle + devtools
-  (`qt_webview.cpp`), and the `ipc`/`tauri`/`asset` scheme handler with the reply-job lifetime
-  recipe (`qt_scheme.cpp`). Glue is plain `cxx` + `qt-build-utils` (cxx-qt's initializer
-  machinery cannot link from a library crate).
-- **M1 wiring** — Rust routes scheme requests into the `uri_scheme_protocols` tauri registers
-  per webview, and maps responses back (`Tauri-Response`, CORS expose-headers, content type).
-- App side: `tauriqt` is now a Tauri 2 app built **without the `wry` feature** on Linux, with
+  renders on Wayland.
+- **M1 done** — `tauri-runtime-qt` implements the full trait surface and backs it with real
+  Qt code: `QApplication` bootstrap + URL-scheme registration (`qt_app.cpp`), window
+  registry/geometry/events (`qt_window.cpp`), `QWebEngineView` lifecycle + devtools
+  (`qt_webview.cpp`), and the `ipc`/`tauri`/`asset` scheme handler with the reply-job
+  lifetime recipe (`qt_scheme.cpp`). Glue is plain `cxx` + `qt-build-utils` (cxx-qt's
+  initializer machinery cannot link from a library crate).
+- **M2/M3 done** — `tauri://` and `asset://` serving, window/event plumbing, `QTimer`-driven
+  proxy dispatch, monitors via `QScreen`; cookies have a mirror plus `cookies_for_url`.
+- **M4 done except for the tail** — the trait surface is implemented and exercised by the
+  demo's twelve commands. Pure logic now lives in `tauri-runtime-qt-core` (no Qt, no `cxx`),
+  so it links and tests normally: `cargo test -p tauri-runtime-qt-core` runs **65 unit
+  tests**. The remaining `WindowDispatch` methods return `Err(NotSupported)` where Qt has no
+  equivalent — never silent no-ops.
+- **M5 done** — `nix build .#tauriqt` packages the app with Qt, and the three flake checks
+  (`smoke`, `wayland-smoke`, `sway-oracle`) plus `scripts/coverage.sh` grade it; CI runs
+  them on x86_64 and aarch64.
+- **Beyond the plan**: the repository also carries a coverage pipeline (merged llvm lcov for
+  Rust + C++, genhtml and ReportGenerator HTML) and an integrations tier that runs *other
+  people's* apps against this runtime — [Readest](integrations/readest/README.md) boots on
+  it, its `invoke()` reaches its Rust and its own 183-test suite passes. Running it is what
+  surfaced the `tauri-runtime` 2.12 / 2.11 skew below.
+- App side: `tauriqt` is a Tauri 2 app built **without the `wry` feature** on Linux, with
   wry wired in as a per-target fallback for Windows/macOS (and `--features wry` on Linux).
-
-Known limits at this stage: cookies/`clear_all_browsing_data`/`eval_script_with_callback`/
-`reparent` return errors; scheme responses that tauri resolves asynchronously are reported
-unhandled (the bridge call is synchronous); binary IPC bodies are carried as `str`.
 
 ## Milestones
 
@@ -45,23 +54,23 @@ unhandled (the bridge call is synchronous); binary IPC bodies are carried as `st
 - Exit criterion met: `invoke("greet", { name: "Qt" })` → `ipc POST ipc://localhost/greet
   -> 200` → `"Hello, Qt! — from linux"` rendered by the page (title `INVOKE_OK`)
 
-### M2 — Frontend serving
+### M2 — Frontend serving ✅
 - `tauri://localhost` scheme serving the built frontend (`dist/`)
 - `asset://localhost` with default port 0 semantics (like wry)
 - init scripts via `QWebEngineProfile::scripts` (`QWebEngineScript` at `DocumentCreation`)
 
-### M3 — Window + event plumbing (Qt replaces tao)
+### M3 — Window + event plumbing (Qt replaces tao) ✅
 - `QMainWindow`/`QWidget` hosting the `QWebEngineView`
 - Events: close-request, resize, focus, drag-drop → `WindowEvent`/`WebviewEvent`
 - `QTimer`-driven proxy dispatch for `EventLoopProxy`
 - Monitor info via `QScreen`
 
-### M4 — tauri-runtime-qt crate (the API surface below)
+### M4 — tauri-runtime-qt crate (the API surface below) 🔶 (tail: Qt-less methods)
 - Implement `tauri_runtime` traits, wire `tauri::Builder<QtRuntime>`
 - Unknown/unneeded `WindowDispatch` methods: return `Err(Error::NotSupported)` — stubbed,
   never silent no-ops
 
-### M5 — Nix packaging + polish
+### M5 — Nix packaging + polish ✅
 - `QtWebEngineProcess` discovery, sandbox wrapper if needed
 - Bundle size sanity check
 
@@ -73,15 +82,22 @@ Full per-method inventory with Qt mappings and ✅/🔶/⛔ classification lives
 
 
 ## Risks / open questions
-- tauri-runtime trait churn across tauri minor releases (rebase, like wrymium)
+- tauri-runtime trait churn across tauri minor releases — **no longer hypothetical**: 2.12
+  added the required `WindowDispatch::set_fullscreen_on_monitor`, which broke a consumer
+  pinned to 2.11.3 (Readest) until it moved behind the default-on `tauri-runtime-2-12`
+  feature. Expect more of this, and keep such additions feature-gated.
 - LGPLv3 (QtWebEngine) → dynamic linking only; fine for local use, matters on distribution
-- Chromium sandbox on NixOS: verify outside agent sandbox (worked on real session for the
-  sample; revisit if `QtWebEngineProcess` needs a wrapper)
+- Chromium sandbox on NixOS: **resolved** — no wrapper needed, but QtWebEngine aborts
+  instead of falling back when there is no GL device, so headless runs set
+  `QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox --disable-gpu --disable-gpu-compositing`
+  (docs/nix-qt-gotchas.md). Related, and now documented as a check: an environment with no
+  `/dev/dri` at all never gets a *mapped* window, because QtWebEngine's `QQuickWidget`-backed
+  flush cannot commit a `wl_buffer` (docs/wayland-smoke-findings.md, verdict 5).
 
 ## Current coverage — runtime demo (`tauriqt` app)
 
-`tauriqt/src/main.rs` now registers five demo commands that exercise the runtime
-end-to-end and print their results to the terminal via `report`:
+`tauriqt/src/main.rs` registers twelve demo commands that exercise the runtime end-to-end
+and print their results to the terminal via `report`:
 
 | Command | Exercises |
 |---|---|
@@ -90,6 +106,9 @@ end-to-end and print their results to the terminal via `report`:
 | `set_fullscreen` | `WindowDispatch::set_fullscreen` |
 | `set_title` | `WindowDispatch::set_title` |
 | `report` | `println!` breadcrumb channel for the page |
+| `cookie_sandbox_url` / `cookies_dump` | cookie mirror, `cookies_for_url` |
+| `cookie_set` / `cookie_delete` / `cookies_clear` | `set_cookie`, `delete_cookie`, `clear_all_browsing_data` |
+| `platform` | `platform_name()` — lets the page treat Wayland's by-design gaps as expected |
 
 Each probed method is reported independently: unsupported/unimplemented methods
 (delegates that still return `Err`, e.g. `unimplemented("WindowDispatch::…")` in
