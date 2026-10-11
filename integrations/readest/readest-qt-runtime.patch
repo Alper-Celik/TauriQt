@@ -1,0 +1,58 @@
+diff --git a/apps/readest-app/src-tauri/Cargo.toml b/apps/readest-app/src-tauri/Cargo.toml
+index 01047c6..cea6ae3 100644
+--- a/apps/readest-app/src-tauri/Cargo.toml
++++ b/apps/readest-app/src-tauri/Cargo.toml
+@@ -27,6 +27,9 @@ wry = ["tauri/wry", "tauri/x11", "tauri/dbus"]
+ # takes it from feat/cef; every other build resolves it to the empty stub in
+ # packages/tauri-runtime-cef-stub (see the root Cargo.toml).
+ cef = ["dep:tauri-runtime-cef", "dep:zbus", "tauri-plugin-native-bridge/cef"]
++# Qt runtime (Qt windowing + QtWebEngine) from the TauriQt repo — the same slot
++# as `cef`, for evaluating that runtime against this app. Linux only, like `cef`.
++qt = ["dep:tauri-runtime-qt"]
+ # Internal feature to suppress warnings from old objc crate
+ cargo-clippy = []
+ # Enable WebDriver plugin for E2E testing (use with `tauri build --debug --features webdriver`)
+@@ -211,6 +214,9 @@ objc2-foundation = { version = "0.3", features = ["NSError", "NSArray"] }
+ tauri-plugin-dialog = { version = "2", default-features = false, features = ["xdg-portal"] }
+ # The CEF runtime, enabled by the `cef` feature above.
+ tauri-runtime-cef = { version = "0.1", optional = true }
++# The Qt runtime, enabled by the `qt` feature above. The path is filled in by
++# integrations/readest/apply.sh in the TauriQt repo (the crate is not published).
++tauri-runtime-qt = { path = "@TAURIQT_RUNTIME@", optional = true }
+ # Hands a relaunch to the running instance before CEF starts, see
+ # src/linux_single_instance.rs.
+ zbus = { version = "5", optional = true }
+diff --git a/apps/readest-app/src-tauri/src/lib.rs b/apps/readest-app/src-tauri/src/lib.rs
+index 49d6e99..f7f1898 100644
+--- a/apps/readest-app/src-tauri/src/lib.rs
++++ b/apps/readest-app/src-tauri/src/lib.rs
+@@ -497,9 +497,14 @@ struct SingleInstancePayload {
+ /// The one Linux build that is still Wry is the webdriver test harness
+ /// (scripts/test-tauri.sh): tauri-plugin-webdriver drives the webview through
+ /// webkit2gtk there and has no CEF backend.
+-#[cfg(all(feature = "cef", target_os = "linux"))]
++#[cfg(all(feature = "qt", target_os = "linux"))]
++type AppRuntime = tauri_runtime_qt::QtRuntime;
++#[cfg(all(not(feature = "qt"), feature = "cef", target_os = "linux"))]
+ type AppRuntime = tauri_runtime_cef::CefRuntime;
+-#[cfg(not(all(feature = "cef", target_os = "linux")))]
++#[cfg(not(any(
++    all(feature = "qt", target_os = "linux"),
++    all(feature = "cef", target_os = "linux")
++)))]
+ type AppRuntime = tauri::Wry;
+ 
+ #[cfg(desktop)]
+@@ -602,6 +607,12 @@ pub fn run() {
+ 
+     let builder = tauri::Builder::<AppRuntime>::new();
+ 
++    // QtWebEngine never hands over custom-protocol POST bodies, so the Qt runtime
++    // carries the invoke payload in a header instead (INVOKE_SYSTEM_SCRIPT).
++    // Without this every `invoke()` from the frontend fails to reach Rust.
++    #[cfg(all(feature = "qt", target_os = "linux"))]
++    let builder = builder.invoke_system(tauri_runtime_qt::INVOKE_SYSTEM_SCRIPT);
++
+     #[cfg(all(feature = "cef", target_os = "linux"))]
+     let builder = {
+         // Chromium runs unsandboxed, as it always has here. The runtime's
