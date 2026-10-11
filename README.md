@@ -167,5 +167,6 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
 ## Licence
 
-MIT (`LICENSES/MIT.txt`); every file carries SPDX headers and `just lint-reuse` keeps
-[REUSE](https://reuse.software/) compliance intact.
+MIT (`LICENSES/MIT.txt`). [REUSE](https://reuse.software/) compliance is enforced by
+`just lint-reuse`: a blanket [`REUSE.toml`](REUSE.toml) covers the prose files, and the
+source files carry inline SPDX headers.

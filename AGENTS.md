@@ -48,8 +48,10 @@ fight the tooling.
 
 ## Conventions this repository expects
 
-- **Every new file needs SPDX headers** (`SPDX-FileCopyrightText` + `SPDX-License-Identifier:
-  MIT`); markdown and YAML included. `just lint-reuse` keeps it honest.
+- **REUSE is required and enforced** (`just lint-reuse`). A blanket `REUSE.toml`
+  (`path = ["**"]`, MIT, © 2026 Alper Çelik) already covers prose and data files, so a new
+  markdown file needs nothing; source files carry inline
+  `SPDX-FileCopyrightText` / `SPDX-License-Identifier` headers, matching their neighbours.
 - Commits are expected as you go (this repo is agent-written; the history is the record).
   Keep the message about the behaviour, not the process.
 - Docs live beside the thing they describe: `docs/*-findings.md` for measurements,

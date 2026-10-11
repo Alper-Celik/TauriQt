@@ -43,9 +43,12 @@ pub fn resize_direction_code(direction: ResizeDirection) -> i32 {
 }
 
 /// Whether the Qt platform plugin lets clients place and stack their own
-/// top-level windows (X11). A Wayland compositor owns placement: the protocol
-/// has no request for it and Qt answers position queries with artificial
-/// values, so the runtime must refuse instead of reporting those.
+/// top-level windows (X11). A Wayland compositor owns placement and exposes no
+/// stacking request, so `always_on_top`/`always_on_bottom` must refuse there.
+///
+/// This is *not* the gate for positions: Qt remembers the position an app asked
+/// for and reports it back, so `set_position`/`inner_position`/`outer_position`
+/// answer on every platform (see `docs/wayland-ci.md`).
 pub fn placement_supported(platform: &str) -> bool {
     matches!(platform, "xcb" | "xlib")
 }

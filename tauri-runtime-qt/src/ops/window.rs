@@ -6,8 +6,18 @@
 //! Everything here talks to `bridge::window::ffi` (`qt_window.cpp`). Functions
 //! return `Err` when Qt cannot answer truthfully on this platform: an id that
 //! is not in the C++ registry is `Error::WindowNotFound`, and an operation the
-//! platform cannot honour (Wayland placement, an unreportable colour scheme,
-//! a refused drag) is a message-carrying error instead of a fabricated value.
+//! platform cannot honour (an unreportable colour scheme, a refused drag) is a
+//! message-carrying error instead of a fabricated value.
+//!
+//! Window *positions* are deliberately not in that set. A Wayland compositor
+//! owns placement and honours neither `move()` nor a stacking hint, but Qt keeps
+//! the position an app asked for and reports it back, and callers treat the
+//! position as always available: `tauri-plugin-window-state`, for one, aborts
+//! its startup restore — including the `show()` that maps a hidden window —
+//! on the first `Err` it gets from `outer_position`. So `inner_position`,
+//! `outer_position` and `set_position` answer with Qt's own bookkeeping on every
+//! platform, exactly like tao does, and report the app's *requested* position on
+//! Wayland rather than failing. See `docs/wayland-ci.md`.
 //!
 //! Qt reports geometry in device-independent ("logical") pixels; tauri asks
 //! for physical ones, so every geometry value crosses the boundary through the
@@ -113,30 +123,25 @@ pub(crate) fn outer_size(native: u64) -> Result<PhysicalSize<u32>> {
     Ok(physical_size(native, size))
 }
 
+/// Position of the window's client area.
+///
+/// On Wayland this is Qt's own record of where the window was asked to be (the
+/// compositor decides where it really is and does not report it), which is what
+/// tao answers there too — see the module docs.
 pub(crate) fn inner_position(native: u64) -> Result<PhysicalPosition<i32>> {
     require_window(native)?;
-    let platform = platform();
-    if !qtcore::window::placement_supported(&platform) {
-        return Err(unavailable(
-            "the window position",
-            &format!("the '{platform}' Qt platform does not report top-level window positions"),
-        ));
-    }
     Ok(physical_position(
         native,
         ffi::qt_window_inner_position(native),
     ))
 }
 
+/// Position of the window's frame (its top-left corner on the desktop).
+///
+/// Same Wayland caveat as [`inner_position`]: the value is the requested
+/// position, not a compositor-reported one.
 pub(crate) fn outer_position(native: u64) -> Result<PhysicalPosition<i32>> {
     require_window(native)?;
-    let platform = platform();
-    if !qtcore::window::placement_supported(&platform) {
-        return Err(unavailable(
-            "the window frame position",
-            &format!("the '{platform}' Qt platform does not report top-level window positions"),
-        ));
-    }
     Ok(physical_position(
         native,
         ffi::qt_window_outer_position(native),
@@ -365,15 +370,13 @@ pub(crate) fn set_background_color(native: u64, color: Option<Color>) -> Result<
     Ok(())
 }
 
+/// Moves the window to `position`, in the window's own pixel unit.
+///
+/// On X11 the window manager is asked to place the frame there. On Wayland the
+/// compositor owns placement, so `move()` only records the position Qt reports
+/// back through [`outer_position`]; the call still succeeds, as it does in tao.
 pub(crate) fn set_position(native: u64, position: Position) -> Result<()> {
     require_window(native)?;
-    let platform = platform();
-    if !qtcore::window::placement_supported(&platform) {
-        return Err(unavailable(
-            "absolute window positioning",
-            &format!("the '{platform}' Qt platform does not let clients place top-level windows"),
-        ));
-    }
     let (x, y) = qtcore::window::window_position(device_pixel_ratio(native), position);
     ffi::qt_window_set_position(native, x, y);
     Ok(())
