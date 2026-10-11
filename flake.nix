@@ -60,6 +60,10 @@
           nativeBuildInputs = [
             (qmakeMerged pkgs)
             pkgs.cmake
+            pkgs.pkg-config
+            pkgs.glib
+            pkgs.gtk3
+            pkgs.webkitgtk_4_1
             pkgs.kdePackages.wrapQtAppsHook
           ];
           buildInputs = [
@@ -95,7 +99,10 @@
             pkgs.clippy
             pkgs.cmake
             pkgs.reuse
-            pkgs.libGL
+            pkgs.pkg-config
+            pkgs.glib
+            pkgs.gtk3
+            pkgs.webkitgtk_4_1
             (qtMerged pkgs)
           ];
         };

@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "tauri-runtime-qt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tauri-runtime = "2"
+tauri-utils = "2"
+dpi = "0.1"
+url = "2"
+cookie = "0.18"
+raw-window-handle = "0.6"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gtk = { version = "0.18", features = ["v3_24"] }
