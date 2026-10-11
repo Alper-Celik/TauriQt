@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "tauri-runtime-qt-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+base64 = "0.22"
+cookie = "0.18"
+http = "1"
+tauri-runtime = "2"
+tauri-utils = "2"
+url = "2"
+
+[dev-dependencies]
+serde_json = "1"

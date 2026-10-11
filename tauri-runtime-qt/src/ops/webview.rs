@@ -41,6 +41,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use parking_lot::Mutex;
 use tauri_runtime::dpi::{PhysicalPosition, PhysicalSize, Position, Rect, Size};
 use tauri_runtime::{Error, Result};
+use tauri_runtime_qt_core as qtcore;
 use tauri_utils::config::Color;
 
 use crate::bridge::webview::ffi;
@@ -129,13 +130,12 @@ pub(crate) fn is_devtools_open(native: u64) -> Result<bool> {
 
 pub(crate) fn bounds(native: u64) -> Result<Rect> {
     let geometry = live_geometry(native)?;
-    Ok(Rect {
-        position: Position::Physical(PhysicalPosition::new(geometry.x, geometry.y)),
-        size: Size::Physical(PhysicalSize::new(
-            geometry.width.max(0) as u32,
-            geometry.height.max(0) as u32,
-        )),
-    })
+    Ok(qtcore::webview::geometry_rect(
+        geometry.x,
+        geometry.y,
+        geometry.width,
+        geometry.height,
+    ))
 }
 
 pub(crate) fn position(native: u64) -> Result<PhysicalPosition<i32>> {
@@ -145,17 +145,14 @@ pub(crate) fn position(native: u64) -> Result<PhysicalPosition<i32>> {
 
 pub(crate) fn size(native: u64) -> Result<PhysicalSize<u32>> {
     let geometry = live_geometry(native)?;
-    Ok(PhysicalSize::new(
-        geometry.width.max(0) as u32,
-        geometry.height.max(0) as u32,
+    Ok(qtcore::webview::geometry_size(
+        geometry.width,
+        geometry.height,
     ))
 }
 
 pub(crate) fn set_size(native: u64, size: Size) -> Result<()> {
-    let (width, height, physical) = match size {
-        Size::Physical(s) => (s.width as i32, s.height as i32, true),
-        Size::Logical(s) => (s.width as i32, s.height as i32, false),
-    };
+    let (width, height, physical) = qtcore::webview::size_params(size);
     if ffi::qt_webview_set_size(native, width, height, physical) {
         Ok(())
     } else {
@@ -167,10 +164,7 @@ pub(crate) fn set_position(native: u64, position: Position) -> Result<()> {
     // A webview is a child widget, so this positions it inside its own window.
     // That works on Wayland too (unlike positioning a *top-level window*, which
     // the protocol forbids): a child's placement is client-side.
-    let (x, y, physical) = match position {
-        Position::Physical(p) => (p.x, p.y, true),
-        Position::Logical(p) => (p.x as i32, p.y as i32, false),
-    };
+    let (x, y, physical) = qtcore::webview::position_params(position);
     if ffi::qt_webview_set_position(native, x, y, physical) {
         Ok(())
     } else {

@@ -1,5 +1,296 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 9fff2ab..34a9645 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -78,6 +78,7 @@ dependencies = [
+  "tauri-plugin-webview-upgrade",
+  "tauri-plugin-window-state",
+  "tauri-runtime-cef",
++ "tauri-runtime-qt",
+  "thiserror 2.0.20",
+  "tokio",
+  "tokio-stream",
+@@ -784,7 +785,7 @@ dependencies = [
+  "rustc-hash 1.1.0",
+  "shlex 1.3.0",
+  "syn 2.0.119",
+- "which",
++ "which 4.4.2",
+ ]
+ 
+ [[package]]
+@@ -1319,6 +1320,17 @@ dependencies = [
+  "objc",
+ ]
+ 
++[[package]]
++name = "codespan-reporting"
++version = "0.13.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
++dependencies = [
++ "serde",
++ "termcolor",
++ "unicode-width",
++]
++
+ [[package]]
+ name = "color_quant"
+ version = "1.1.0"
+@@ -1738,6 +1750,68 @@ dependencies = [
+  "syn 2.0.119",
+ ]
+ 
++[[package]]
++name = "cxx"
++version = "1.0.205"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c8a02bfeba9074b2bbb39492c9b0908ec854f455a3cccdcde7a1de55e2315e40"
++dependencies = [
++ "cc",
++ "cxx-build",
++ "cxxbridge-cmd",
++ "cxxbridge-flags",
++ "cxxbridge-macro",
++ "foldhash 0.2.0",
++ "link-cplusplus",
++]
++
++[[package]]
++name = "cxx-build"
++version = "1.0.205"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bbc2ac76997619d2d888b58ad79488f1c835de41ca4dd3dd7082acf4ecb0a50f"
++dependencies = [
++ "cc",
++ "codespan-reporting",
++ "indexmap 2.14.2",
++ "proc-macro2",
++ "quote",
++ "scratch",
++ "syn 3.0.5",
++]
++
++[[package]]
++name = "cxxbridge-cmd"
++version = "1.0.205"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "54a486ed16a3f2a053fe7f5b98db4c1a59846a23e8cb9e49f9d1bd48830d51a2"
++dependencies = [
++ "clap",
++ "codespan-reporting",
++ "indexmap 2.14.2",
++ "proc-macro2",
++ "quote",
++ "syn 3.0.5",
++]
++
++[[package]]
++name = "cxxbridge-flags"
++version = "1.0.205"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "c72569be94e2283764d334cd285980b747dbe221e27e315484eb6bcd93fa808a"
++
++[[package]]
++name = "cxxbridge-macro"
++version = "1.0.205"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "423e795284a7f7b3f843c956a5322c4bc497b60c2dd1a6339da10313cb18d575"
++dependencies = [
++ "indexmap 2.14.2",
++ "proc-macro2",
++ "quote",
++ "syn 3.0.5",
++]
++
+ [[package]]
+ name = "darling"
+ version = "0.20.11"
+@@ -4418,6 +4492,15 @@ dependencies = [
+  "libc",
+ ]
+ 
++[[package]]
++name = "link-cplusplus"
++version = "1.0.12"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "7f78c730aaa7d0b9336a299029ea49f9ee53b0ed06e9202e8cb7db9bae7b8c82"
++dependencies = [
++ "cc",
++]
++
+ [[package]]
+ name = "linkme"
+ version = "0.3.37"
+@@ -6197,6 +6280,19 @@ version = "0.1.30"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
+ 
++[[package]]
++name = "qt-build-utils"
++version = "0.10.0"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "7c97911f105c362cbc035f631be7b43e44d9bca3a3aed2434260ba896f23d6b4"
++dependencies = [
++ "anyhow",
++ "cc",
++ "semver",
++ "thiserror 1.0.69",
++ "which 8.0.6",
++]
++
+ [[package]]
+ name = "quick-error"
+ version = "2.0.1"
+@@ -6959,6 +7055,12 @@ version = "1.2.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
+ 
++[[package]]
++name = "scratch"
++version = "1.0.9"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "d68f2ec51b097e4c1a75b681a8bec621909b5e91f15bb7b840c4f2f7b01148b2"
++
+ [[package]]
+ name = "security-framework"
+ version = "3.7.0"
+@@ -8174,7 +8276,7 @@ dependencies = [
+  "swift-rs",
+  "tauri-build 2.6.3",
+  "tauri-macros",
+- "tauri-runtime",
++ "tauri-runtime 2.11.3",
+  "tauri-runtime-wry",
+  "tauri-utils 2.9.3",
+  "thiserror 2.0.20",
+@@ -8826,10 +8928,65 @@ dependencies = [
+  "windows 0.61.3",
+ ]
+ 
++[[package]]
++name = "tauri-runtime"
++version = "2.11.3"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "b0b4bc95aed361b0019067d189a1174a603d460d0f6c72606512d59fc9c12ec8"
++dependencies = [
++ "cookie",
++ "dpi",
++ "gtk",
++ "http",
++ "jni 0.21.1",
++ "objc2",
++ "objc2-ui-kit",
++ "objc2-web-kit",
++ "raw-window-handle",
++ "serde",
++ "serde_json",
++ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "thiserror 2.0.20",
++ "url",
++ "webkit2gtk",
++ "webview2-com",
++ "windows 0.61.3",
++]
++
+ [[package]]
+ name = "tauri-runtime-cef"
+ version = "0.1.0"
+ 
++[[package]]
++name = "tauri-runtime-qt"
++version = "0.1.0"
++dependencies = [
++ "cookie",
++ "cxx",
++ "cxx-build",
++ "gtk",
++ "http",
++ "parking_lot",
++ "qt-build-utils",
++ "raw-window-handle",
++ "tauri-runtime 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-runtime-qt-core",
++ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "url",
++]
++
++[[package]]
++name = "tauri-runtime-qt-core"
++version = "0.1.0"
++dependencies = [
++ "base64 0.22.1",
++ "cookie",
++ "http",
++ "tauri-runtime 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "url",
++]
++
+ [[package]]
+ name = "tauri-runtime-wry"
+ version = "2.11.4"
+@@ -8845,7 +9002,7 @@ dependencies = [
+  "raw-window-handle",
+  "softbuffer",
+  "tao",
+- "tauri-runtime",
++ "tauri-runtime 2.11.3",
+  "tauri-utils 2.9.3",
+  "url",
+  "webkit2gtk",
+@@ -8960,6 +9117,15 @@ dependencies = [
+  "new_debug_unreachable",
+ ]
+ 
++[[package]]
++name = "termcolor"
++version = "1.4.1"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
++dependencies = [
++ "winapi-util",
++]
++
+ [[package]]
+ name = "thiserror"
+ version = "1.0.69"
+@@ -10361,6 +10527,15 @@ dependencies = [
+  "rustix 0.38.44",
+ ]
+ 
++[[package]]
++name = "which"
++version = "8.0.6"
++source = "registry+https://github.com/rust-lang/crates.io-index"
++checksum = "bae2f2b2b816647a1cab1acc91f5bd20812d53cb344382635ec2181940c8034f"
++dependencies = [
++ "libc",
++]
++
+ [[package]]
+ name = "winapi"
+ version = "0.3.9"
+diff --git a/Cargo.toml b/Cargo.toml
+index c35ac60..fbd7e7d 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -47,6 +47,13 @@ rust-version = "1.90"
+ 
+ [patch.crates-io]
+ tauri = { path = "packages/tauri/crates/tauri" }
++# The Qt runtime (the `qt` feature) is a *runtime* crate: it implements
++# `tauri_runtime::Runtime`, and the app's tauri must check that exact crate.
++# Without these two patches `tauri-runtime`/`tauri-utils` resolve twice — once
++# from this vendored fork (through tauri) and once from crates.io (through the
++# runtime) — and the two trait definitions do not match.
++tauri-runtime = { path = "packages/tauri/crates/tauri-runtime" }
++tauri-utils = { path = "packages/tauri/crates/tauri-utils" }
+ # Xcode 26.x (Swift 6.2) broke upstream swift-rs's per-swiftc target
+ # override; the vendored copy cross-compiles via `--triple`/`--sdk` instead.
+ # Upstream 1.0.8 (2026-08) only takes that path on Xcode 27, so the vendored
 diff --git a/apps/readest-app/src-tauri/Cargo.toml b/apps/readest-app/src-tauri/Cargo.toml
-index 01047c6..cea6ae3 100644
+index 01047c6..610b2e0 100644
 --- a/apps/readest-app/src-tauri/Cargo.toml
 +++ b/apps/readest-app/src-tauri/Cargo.toml
 @@ -27,6 +27,9 @@ wry = ["tauri/wry", "tauri/x11", "tauri/dbus"]
@@ -18,7 +309,7 @@ index 01047c6..cea6ae3 100644
  tauri-runtime-cef = { version = "0.1", optional = true }
 +# The Qt runtime, enabled by the `qt` feature above. The path is filled in by
 +# integrations/readest/apply.sh in the TauriQt repo (the crate is not published).
-+tauri-runtime-qt = { path = "@TAURIQT_RUNTIME@", optional = true }
++tauri-runtime-qt = { path = "/home/alper/Projects/TauriQt/tauri-runtime-qt", optional = true }
  # Hands a relaunch to the running instance before CEF starts, see
  # src/linux_single_instance.rs.
  zbus = { version = "5", optional = true }

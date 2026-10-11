@@ -9,10 +9,15 @@
 //! C++ translation units must include the cxx-generated header for this bridge
 //! (it declares the `extern "Rust"` callbacks below with the correct linkage):
 //! `#include "tauri-runtime-qt/src/qt.rs.h"`.
+//!
+//! The payload encoding the bridge speaks (header block, base64 body marker,
+//! response framing) lives in `tauri-runtime-qt-core::scheme`; the callbacks and
+//! the bridge declaration stay here.
 
 use parking_lot::Mutex;
 use tauri_runtime as rt;
 use tauri_runtime::window::WindowEvent;
+use tauri_runtime_qt_core as qtcore;
 
 #[cxx::bridge]
 pub mod ffi {
@@ -86,19 +91,11 @@ pub fn qt_on_window_event(id: u64, kind: i32, payload: &str) {
         1 => WindowEvent::Focused(true),
         2 => WindowEvent::Focused(false),
         3 => {
-            let mut parts = payload.split('x');
-            let (w, h) = (
-                parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
-                parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
-            );
+            let (w, h) = qtcore::window::parse_resize_payload(payload);
             WindowEvent::Resized(rt::dpi::PhysicalSize::new(w, h))
         }
         4 => {
-            let mut parts = payload.split(',');
-            let (x, y) = (
-                parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
-                parts.next().and_then(|v| v.parse().ok()).unwrap_or(0),
-            );
+            let (x, y) = qtcore::window::parse_move_payload(payload);
             WindowEvent::Moved(rt::dpi::PhysicalPosition::new(x, y))
         }
         _ => return,
@@ -148,24 +145,9 @@ pub fn qt_scheme_request(
     };
 
     // QtWebEngine never hands us the POST body, so our invoke system carries it
-    // in `X-Tauriqt-Payload` (base64); turn it back into the request body here so
-    // tauri's IPC handler sees a normal request.
-    let mut payload: Option<Vec<u8>> = None;
-    let mut request = http::Request::builder().method(method).uri(url);
-    for line in headers.lines() {
-        let Some((name, value)) = line.split_once(": ") else {
-            continue;
-        };
-        let (name, value) = (name.trim(), value.trim());
-        if name.eq_ignore_ascii_case("x-tauriqt-payload") {
-            use base64::Engine as _;
-            payload = base64::engine::general_purpose::STANDARD.decode(value).ok();
-            continue;
-        }
-        request = request.header(name, value);
-    }
-    let request_body = payload.unwrap_or_else(|| body.as_bytes().to_vec());
-    let Ok(request) = request.body(request_body) else {
+    // in `X-Tauriqt-Payload` (base64); the core crate turns the bridge's header
+    // block back into a normal request for tauri's IPC handler.
+    let Some(request) = qtcore::scheme::decode_request(method, url, headers, body) else {
         return unhandled();
     };
 
@@ -202,7 +184,7 @@ pub fn qt_scheme_request(
             &label,
             request,
             Box::new(move |response: http::Response<std::borrow::Cow<'static, [u8]>>| {
-                let (status, headers, body) = encode_response(response);
+                let (status, headers, body) = qtcore::scheme::encode_response(response);
                                 crate::qtrace!(
                     "[tauri-runtime-qt] {scheme} {method_owned} {url_owned} -> {status} ({} body bytes)",
                     body.len()
@@ -251,24 +233,4 @@ pub fn qt_scheme_request(
         headers: String::new(),
         body: String::new(),
     }
-}
-
-/// Encodes an `http::Response` into the header/body representation the bridge uses.
-fn encode_response(
-    response: http::Response<std::borrow::Cow<'static, [u8]>>,
-) -> (i32, String, String) {
-    let status = response.status().as_u16() as i32;
-    let mut headers = String::new();
-    for (name, value) in response.headers() {
-        if let Ok(value) = value.to_str() {
-            headers.push_str(name.as_str());
-            headers.push_str(": ");
-            headers.push_str(&value.replace(['\r', '\n'], ""));
-            headers.push('\n');
-        }
-    }
-    if !headers.contains("Access-Control-Expose-Headers") {
-        headers.push_str("Access-Control-Expose-Headers: Tauri-Response, Content-Type\n");
-    }
-    (status, headers, String::from_utf8_lossy(response.body()).into_owned())
 }

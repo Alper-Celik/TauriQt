@@ -10,11 +10,11 @@ edition = "2021"
 devtools = []
 
 [dependencies]
-base64 = "0.22"
 cxx = "1"
 http = "1"
 parking_lot = "0.12"
 tauri-runtime = "2"
+tauri-runtime-qt-core = { path = "../tauri-runtime-qt-core" }
 tauri-utils = "2"
 url = "2"
 cookie = "0.18"

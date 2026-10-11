@@ -15,6 +15,7 @@ The checkout created below is disposable and gitignored.
 |---|---|
 | `apps/readest-app/src-tauri/Cargo.toml` | `qt = ["dep:tauri-runtime-qt"]`, an optional Linux dependency on this repo's runtime (path injected by `apply.sh`), mirroring the existing `cef` feature |
 | `apps/readest-app/src-tauri/src/lib.rs` | `type AppRuntime = tauri_runtime_qt::QtRuntime` behind `qt`, taking precedence over `cef`/`wry`; and `builder.invoke_system(tauri_runtime_qt::INVOKE_SYSTEM_SCRIPT)` |
+| `Cargo.toml` (root) | `[patch.crates-io] tauri-runtime` + `tauri-utils` → the vendored fork under `packages/tauri/crates/`. Readest's tauri family is path-vendored, so without this the graph carries **two** `tauri-runtime` 2.11.3 (vendored + crates.io) and the runtime's `Runtime` impl no longer matches the trait the app's tauri checks |
 
 The invoke system is not optional here: QtWebEngine never hands over custom-protocol POST
 bodies, so this runtime carries the `invoke()` payload in a header. Without it every

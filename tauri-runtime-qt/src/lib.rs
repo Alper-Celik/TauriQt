@@ -34,6 +34,7 @@ use tauri_runtime::{
     Cookie, DeviceEventFilter, Error, EventLoopProxy, Icon, ProgressBarState, ResizeDirection,
     Result, RunEvent, RuntimeInitArgs, UserAttentionType, UserEvent, WebviewEventId, WindowEventId,
 };
+use tauri_runtime_qt_core as qtcore;
 use tauri_utils::config::{Color, WindowConfig};
 use tauri_utils::Theme;
 
@@ -282,16 +283,17 @@ impl rt::window::WindowBuilder for QtWindowBuilder {
     }
 
     fn with_config(config: &WindowConfig) -> Self {
+        let params = qtcore::window::window_params(config);
         Self {
-            theme: config.theme.map(Theme::from),
+            theme: params.theme,
             has_icon: false,
-            title: config.title.clone(),
-            width: config.width,
-            height: config.height,
-            visible: config.visible,
-            decorations: config.decorations,
-            maximized: config.maximized,
-            center: config.center,
+            title: params.title,
+            width: params.width,
+            height: params.height,
+            visible: params.visible,
+            decorations: params.decorations,
+            maximized: params.maximized,
+            center: params.center,
             position: None,
         }
     }
@@ -1051,10 +1053,7 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn set_size(&self, size: rt::dpi::Size) -> Result<()> {
-        let (w, h) = match size {
-            rt::dpi::Size::Physical(s) => (s.width as i32, s.height as i32),
-            rt::dpi::Size::Logical(s) => (s.width as i32, s.height as i32),
-        };
+        let (w, h) = qtcore::window::size_to_i32(size);
         ops::window::set_size(self.native, w, h)
     }
 
@@ -1115,17 +1114,10 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn start_resize_dragging(&self, direction: ResizeDirection) -> Result<()> {
-        let direction = match direction {
-            ResizeDirection::East => 1,
-            ResizeDirection::North => 2,
-            ResizeDirection::NorthEast => 3,
-            ResizeDirection::NorthWest => 4,
-            ResizeDirection::South => 5,
-            ResizeDirection::SouthEast => 6,
-            ResizeDirection::SouthWest => 7,
-            ResizeDirection::West => 8,
-        };
-        ops::window::start_resize_dragging(self.native, direction)
+        ops::window::start_resize_dragging(
+            self.native,
+            qtcore::window::resize_direction_code(direction),
+        )
     }
 
     fn set_badge_count(&self, _count: Option<i64>, _desktop_filename: Option<String>) -> Result<()> {

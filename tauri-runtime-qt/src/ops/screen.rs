@@ -21,47 +21,34 @@
 use tauri_runtime::dpi::{PhysicalPosition, PhysicalRect, PhysicalSize};
 use tauri_runtime::monitor::Monitor;
 use tauri_runtime::{Error, Result};
+use tauri_runtime_qt_core as qtcore;
 
 use crate::bridge::screen::ffi::{self, QtScreenInfo};
-
-/// Logical length → physical pixel (same rounding as `dpi`'s `to_physical`).
-fn to_physical(value: i32, scale_factor: f64) -> i32 {
-    (f64::from(value) * scale_factor).round() as i32
-}
-
-/// Logical length → physical pixel, clamped to the unsigned range.
-fn to_physical_u32(value: i32, scale_factor: f64) -> u32 {
-    to_physical(value, scale_factor).max(0) as u32
-}
 
 /// Turns one Qt screen into a tauri [`Monitor`] (physical pixels).
 fn to_monitor(info: &QtScreenInfo) -> Monitor {
     // A missing/zero ratio would silently collapse every value; Qt always
     // reports >= 1, so only an impossible value falls back to 1.
-    let scale_factor = if info.scale_factor.is_finite() && info.scale_factor > 0.0 {
-        info.scale_factor
-    } else {
-        1.0
-    };
+    let scale_factor = qtcore::screen::scale_factor_or_one(info.scale_factor);
 
     Monitor {
         name: (!info.name.is_empty()).then(|| info.name.clone()),
         size: PhysicalSize::new(
-            to_physical_u32(info.width, scale_factor),
-            to_physical_u32(info.height, scale_factor),
+            qtcore::screen::to_physical_u32(info.width, scale_factor),
+            qtcore::screen::to_physical_u32(info.height, scale_factor),
         ),
         position: PhysicalPosition::new(
-            to_physical(info.x, scale_factor),
-            to_physical(info.y, scale_factor),
+            qtcore::screen::to_physical(info.x, scale_factor),
+            qtcore::screen::to_physical(info.y, scale_factor),
         ),
         work_area: PhysicalRect {
             position: PhysicalPosition::new(
-                to_physical(info.available_x, scale_factor),
-                to_physical(info.available_y, scale_factor),
+                qtcore::screen::to_physical(info.available_x, scale_factor),
+                qtcore::screen::to_physical(info.available_y, scale_factor),
             ),
             size: PhysicalSize::new(
-                to_physical_u32(info.available_width, scale_factor),
-                to_physical_u32(info.available_height, scale_factor),
+                qtcore::screen::to_physical_u32(info.available_width, scale_factor),
+                qtcore::screen::to_physical_u32(info.available_height, scale_factor),
             ),
         },
         scale_factor,
@@ -125,11 +112,7 @@ pub(crate) fn cursor_position() -> Result<PhysicalPosition<f64>> {
         // reporting a stale or invented point.
         return Err(Error::FailedToGetCursorPosition);
     }
-    let scale_factor = if cursor.scale_factor.is_finite() && cursor.scale_factor > 0.0 {
-        cursor.scale_factor
-    } else {
-        1.0
-    };
+    let scale_factor = qtcore::screen::scale_factor_or_one(cursor.scale_factor);
     Ok(PhysicalPosition::new(
         cursor.x * scale_factor,
         cursor.y * scale_factor,

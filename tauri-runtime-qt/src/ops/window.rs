@@ -11,21 +11,20 @@
 //!
 //! Qt reports geometry in device-independent ("logical") pixels; tauri asks
 //! for physical ones, so every geometry value crosses the boundary through the
-//! window's own device pixel ratio (`qt_window_scale_factor`).
+//! window's own device pixel ratio (`qt_window_scale_factor`). The conversions
+//! themselves (and Qt's 24-bit hint sentinels) live in
+//! `tauri-runtime-qt-core::window`.
 
-use tauri_runtime::dpi::{PhysicalPosition, PhysicalSize, PixelUnit, Position, Size};
+use tauri_runtime::dpi::{PhysicalPosition, PhysicalSize, Position, Size};
 use tauri_runtime::window::WindowSizeConstraints;
 use tauri_runtime::{Error, Icon, Result};
+use tauri_runtime_qt_core as qtcore;
 use tauri_utils::config::Color;
 use tauri_utils::Theme;
 
 use crate::bridge::window::ffi;
 
 // ---- helpers ----
-
-/// Qt's largest usable window dimension (`QWIDGETSIZE_MAX`): the sentinel of
-/// "no maximum size".
-const QWIDGETSIZE_MAX: f64 = (1 << 24) as f64 - 1.0;
 
 /// Fails with `Error::WindowNotFound` for an id that is not in the C++ window
 /// registry, instead of asking Qt about a window that is not there.
@@ -51,70 +50,20 @@ fn platform() -> String {
     ffi::qt_window_platform()
 }
 
-/// Whether the platform plugin lets clients place and stack their own
-/// top-level windows (X11). A Wayland compositor owns placement: the protocol
-/// has no request for it and Qt answers position queries with artificial
-/// values, so Rust must refuse instead of reporting those.
-fn placement_supported(platform: &str) -> bool {
-    matches!(platform, "xcb" | "xlib")
-}
-
-/// The window's device pixel ratio (physical pixels per logical pixel).
+/// The window's device pixel ratio (physical pixels per logical pixel), with
+/// Qt's "not on a screen yet" reading normalised to 1.
 fn device_pixel_ratio(native: u64) -> f64 {
-    let dpr = ffi::qt_window_scale_factor(native);
-    if dpr > 0.0 {
-        dpr
-    } else {
-        1.0
-    }
+    qtcore::window::device_pixel_ratio(ffi::qt_window_scale_factor(native))
 }
 
 /// Qt logical pixels → tauri physical pixels.
 fn physical_size(native: u64, size: ffi::QtWindowSize) -> PhysicalSize<u32> {
-    let dpr = device_pixel_ratio(native);
-    PhysicalSize::new(
-        (size.width * dpr).round() as u32,
-        (size.height * dpr).round() as u32,
-    )
+    qtcore::window::to_physical_size(device_pixel_ratio(native), size.width, size.height)
 }
 
 /// Qt logical pixels → tauri physical pixels.
 fn physical_position(native: u64, point: ffi::QtWindowPoint) -> PhysicalPosition<i32> {
-    let dpr = device_pixel_ratio(native);
-    PhysicalPosition::new(
-        (point.x * dpr).round() as i32,
-        (point.y * dpr).round() as i32,
-    )
-}
-
-/// Qt size hints are 24-bit: clamp so no `f64` can overflow the `int` Qt
-/// takes. A non-finite value (e.g. the `PixelUnit::MAX` sentinel) means "no
-/// constraint", i.e. the maximum.
-fn qt_dimension(value: f64) -> f64 {
-    if value.is_nan() {
-        0.0
-    } else {
-        value.clamp(0.0, QWIDGETSIZE_MAX)
-    }
-}
-
-/// A tauri size in Qt logical pixels.
-fn qt_size(dpr: f64, size: Size) -> (f64, f64) {
-    let (width, height) = match size {
-        Size::Logical(size) => (size.width, size.height),
-        Size::Physical(size) => (f64::from(size.width) / dpr, f64::from(size.height) / dpr),
-    };
-    (qt_dimension(width), qt_dimension(height))
-}
-
-/// A tauri size-constraint value in Qt logical pixels (`missing` when the
-/// constraint is unspecified).
-fn qt_pixel_unit(dpr: f64, unit: Option<PixelUnit>, missing: f64) -> f64 {
-    match unit {
-        None => missing,
-        Some(PixelUnit::Logical(unit)) => qt_dimension(unit.0),
-        Some(PixelUnit::Physical(unit)) => qt_dimension(f64::from(unit.0) / dpr),
-    }
+    qtcore::window::to_physical_position(device_pixel_ratio(native), point.x, point.y)
 }
 
 // ---- lifecycle ----
@@ -167,7 +116,7 @@ pub(crate) fn outer_size(native: u64) -> Result<PhysicalSize<u32>> {
 pub(crate) fn inner_position(native: u64) -> Result<PhysicalPosition<i32>> {
     require_window(native)?;
     let platform = platform();
-    if !placement_supported(&platform) {
+    if !qtcore::window::placement_supported(&platform) {
         return Err(unavailable(
             "the window position",
             &format!("the '{platform}' Qt platform does not report top-level window positions"),
@@ -179,7 +128,7 @@ pub(crate) fn inner_position(native: u64) -> Result<PhysicalPosition<i32>> {
 pub(crate) fn outer_position(native: u64) -> Result<PhysicalPosition<i32>> {
     require_window(native)?;
     let platform = platform();
-    if !placement_supported(&platform) {
+    if !qtcore::window::placement_supported(&platform) {
         return Err(unavailable(
             "the window frame position",
             &format!("the '{platform}' Qt platform does not report top-level window positions"),
@@ -195,14 +144,13 @@ pub(crate) fn title(native: u64) -> Result<String> {
 
 pub(crate) fn theme(native: u64) -> Result<Theme> {
     require_window(native)?;
-    match ffi::qt_window_theme(native) {
-        1 => Ok(Theme::Light),
-        2 => Ok(Theme::Dark),
-        code => Err(unavailable(
+    let code = ffi::qt_window_theme(native);
+    qtcore::window::theme_from_code(code).ok_or_else(|| {
+        unavailable(
             "the window theme",
             &format!("Qt reports the colour scheme as unknown (code {code})"),
-        )),
-    }
+        )
+    })
 }
 
 pub(crate) fn is_fullscreen(native: u64) -> Result<bool> {
@@ -312,9 +260,9 @@ pub(crate) fn set_fullscreen(native: u64, fullscreen: bool) -> Result<()> {
 pub(crate) fn set_min_size(native: u64, size: Option<Size>) -> Result<()> {
     require_window(native)?;
     let (width, height) = match size {
-        Some(size) => qt_size(device_pixel_ratio(native), size),
+        Some(size) => qtcore::window::qt_size(device_pixel_ratio(native), size),
         // Qt's "no minimum size": QSize(0, 0).
-        None => (0.0, 0.0),
+        None => qtcore::window::NO_MINIMUM,
     };
     ffi::qt_window_set_min_size(native, width, height);
     Ok(())
@@ -323,9 +271,9 @@ pub(crate) fn set_min_size(native: u64, size: Option<Size>) -> Result<()> {
 pub(crate) fn set_max_size(native: u64, size: Option<Size>) -> Result<()> {
     require_window(native)?;
     let (width, height) = match size {
-        Some(size) => qt_size(device_pixel_ratio(native), size),
+        Some(size) => qtcore::window::qt_size(device_pixel_ratio(native), size),
         // Qt's "no maximum size": QWIDGETSIZE_MAX.
-        None => (QWIDGETSIZE_MAX, QWIDGETSIZE_MAX),
+        None => qtcore::window::NO_MAXIMUM,
     };
     ffi::qt_window_set_max_size(native, width, height);
     Ok(())
@@ -333,34 +281,20 @@ pub(crate) fn set_max_size(native: u64, size: Option<Size>) -> Result<()> {
 
 pub(crate) fn set_size_constraints(native: u64, constraints: WindowSizeConstraints) -> Result<()> {
     require_window(native)?;
-    let dpr = device_pixel_ratio(native);
-    let min_width = qt_pixel_unit(dpr, constraints.min_width, 0.0);
-    let min_height = qt_pixel_unit(dpr, constraints.min_height, 0.0);
-    let max_width = qt_pixel_unit(dpr, constraints.max_width, QWIDGETSIZE_MAX);
-    let max_height = qt_pixel_unit(dpr, constraints.max_height, QWIDGETSIZE_MAX);
+    let hints = qtcore::window::size_hints(device_pixel_ratio(native), constraints);
     // Both hints are written in one GUI-thread turn, so no resize can observe
     // half of the new constraints.
-    ffi::qt_window_set_min_size(native, min_width, min_height);
-    ffi::qt_window_set_max_size(native, max_width, max_height);
+    ffi::qt_window_set_min_size(native, hints.min_width, hints.min_height);
+    ffi::qt_window_set_max_size(native, hints.max_width, hints.max_height);
     Ok(())
 }
 
 pub(crate) fn set_icon(native: u64, icon: Icon) -> Result<()> {
     require_window(native)?;
-    let expected = (icon.width as usize)
-        .saturating_mul(icon.height as usize)
-        .saturating_mul(4);
-    if icon.width == 0 || icon.height == 0 || icon.rgba.len() != expected {
-        return Err(Error::InvalidIcon(
-            format!(
-                "icon is {}x{} RGBA8888 ({} bytes) but the buffer holds {} bytes",
-                icon.width,
-                icon.height,
-                expected,
-                icon.rgba.len()
-            )
-            .into(),
-        ));
+    if let Some(message) =
+        qtcore::window::icon_buffer_error(icon.width, icon.height, icon.rgba.len())
+    {
+        return Err(Error::InvalidIcon(message.into()));
     }
     if !ffi::qt_window_set_icon(native, icon.rgba.as_ref(), icon.width, icon.height) {
         return Err(Error::InvalidIcon(
@@ -391,7 +325,7 @@ pub(crate) fn set_enabled(native: u64, enabled: bool) -> Result<()> {
 pub(crate) fn set_always_on_bottom(native: u64, always_on_bottom: bool) -> Result<()> {
     require_window(native)?;
     let platform = platform();
-    if !placement_supported(&platform) {
+    if !qtcore::window::placement_supported(&platform) {
         return Err(unavailable(
             "always-on-bottom",
             &format!(
@@ -406,7 +340,7 @@ pub(crate) fn set_always_on_bottom(native: u64, always_on_bottom: bool) -> Resul
 pub(crate) fn set_always_on_top(native: u64, always_on_top: bool) -> Result<()> {
     require_window(native)?;
     let platform = platform();
-    if !placement_supported(&platform) {
+    if !qtcore::window::placement_supported(&platform) {
         return Err(unavailable(
             "always-on-top",
             &format!(
@@ -430,18 +364,14 @@ pub(crate) fn set_background_color(native: u64, color: Option<Color>) -> Result<
 pub(crate) fn set_position(native: u64, position: Position) -> Result<()> {
     require_window(native)?;
     let platform = platform();
-    if !placement_supported(&platform) {
+    if !qtcore::window::placement_supported(&platform) {
         return Err(unavailable(
             "absolute window positioning",
             &format!("the '{platform}' Qt platform does not let clients place top-level windows"),
         ));
     }
-    let dpr = device_pixel_ratio(native);
-    let (x, y) = match position {
-        Position::Logical(position) => (position.x, position.y),
-        Position::Physical(position) => (f64::from(position.x) / dpr, f64::from(position.y) / dpr),
-    };
-    ffi::qt_window_set_position(native, x.round() as i32, y.round() as i32);
+    let (x, y) = qtcore::window::window_position(device_pixel_ratio(native), position);
+    ffi::qt_window_set_position(native, x, y);
     Ok(())
 }
 
