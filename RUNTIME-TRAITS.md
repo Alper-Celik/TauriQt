@@ -96,16 +96,46 @@ tauri installs on `PendingWebview`, not through `on_webview_event`.
 | Geometry read | `scale_factor`, `inner_position`, `outer_position`, `inner_size`, `outer_size` | ✅ |
 | Geometry write | `set_size`, `set_position`, `center`, `set_min_size`, `set_max_size`, `set_size_constraints` | ✅ (constraints via `QWindow` min/max) |
 | State read | `is_fullscreen`, `is_minimized`, `is_maximized`, `is_focused`, `is_decorated`, `is_resizable`, `is_maximizable`, `is_minimizable`, `is_closable`, `is_visible`, `is_enabled`, `is_always_on_top`, `title`, `theme` | ✅ (flags mirrored in Rust state; Qt doesn't expose `is_closable`/`is_maximizable` on Linux — tracked flags) |
-| State write | `maximize`, `unmaximize`, `minimize`, `unminimize`, `show`, `hide`, `close`, `destroy`, `set_resizable`, `set_enabled`, `set_maximizable`, `set_minimizable`, `set_closable`, `set_title`, `set_decorations`, `set_shadow`, `set_always_on_top`, `set_always_on_bottom`, `set_visible_on_all_workspaces`, `set_fullscreen`, `set_focus`, `set_focusable`, `set_icon`, `set_skip_taskbar` | ✅ mostly; `set_shadow`/`set_icon`/`set_skip_taskbar` 🔶 (QWindow flags / `QIcon`) |
+| State write | `maximize`, `unmaximize`, `minimize`, `unminimize`, `show`, `hide`, `close`, `destroy`, `set_resizable`, `set_enabled`, `set_maximizable`, `set_minimizable`, `set_closable`, `set_title`, `set_decorations`, `set_shadow`, `set_fullscreen`, `set_focus`, `set_icon` | ✅ (`set_shadow`/`set_icon` 🔶 in spirit, both implemented; `set_icon` refuses only on malformed icon data) |
+| Stacking (conditional) | `set_always_on_top`, `set_always_on_bottom` | ✅ on X11; **`Err` on Wayland** — a compositor owns stacking and Qt's `Qt::WindowStaysOnTopHint` is ignored there (QTBUG-73456). The error says so rather than pretending |
 | Events | `on_window_event` (close-request, focus, resize/move, fullscreen), `request_redraw`, `draw` | ✅ |
 | Threading | `run_on_main_thread` | ✅ |
 | Monitors | `current_monitor`, `primary_monitor`, `monitor_from_point`, `available_monitors` | ✅ (`QScreen::geometry`) |
 | Nested creation | `create_window`, `create_webview` | ✅ |
 | Platform handles | `window_handle` (`WId` via `winId()` + raw-window-handle), `gtk_window`/`default_vbox` (GTK-only), `activity_name`/`scene_identifier` (Android/macOS) | `window_handle` ✅, rest ⛔ |
-| Misc | `request_user_attention` (X11 urgency hint), `set_background_color`, `set_content_protected`, `set_fullscreen_on_monitor`, `set_simple_fullscreen`, `set_title_bar_style`, `set_traffic_light_position`, `set_theme` | ⛔/🔶 (mostly macOS/Wayland-N/A) |
-| Cursor | `set_cursor_grab`, `set_cursor_visible`, `set_cursor_icon`, `set_cursor_position`, `set_ignore_cursor_events` | 🔶 (`QCursor` setShape, window flags) |
+| Misc | `set_background_color`, `set_title_bar_style`, `set_traffic_light_position`, `set_theme` | ✅ (macOS-only trait methods such as `set_simple_fullscreen` are not part of the trait on Linux, so they are absent from the impl rather than stubbed) |
+| Misc (⛔) | `request_user_attention` (X11 urgency hint), `set_content_protected`, `set_visible_on_all_workspaces`, `set_fullscreen_on_monitor`, `set_focusable`, `set_skip_taskbar`, `gtk_window`, `default_vbox` | `Err(unimplemented)`. `set_fullscreen_on_monitor` is also *version-gated*: tauri-runtime 2.12 added it as a required method, so it only exists when the `tauri-runtime-2-12` feature is on (default) |
+| Cursor | `set_cursor_grab`, `set_cursor_visible`, `set_cursor_icon`, `set_ignore_cursor_events` | ⛔ all four are `Err(unimplemented)` today (`set_cursor_position` is not a method in this `tauri-runtime`) |
 | Drag | `start_dragging` (→ `QWindow::startSystemMove`), `start_resize_dragging` (→ `startSystemResize`) | ✅ |
 | Taskbar extras | `set_badge_count`, `set_badge_label`, `set_overlay_icon`, `set_progress_bar` | ⛔ |
+
+### Reads must not fail — the one rule the table cannot show
+
+Every geometry/state/monitor **read** in the table above answers, and that is a rule rather
+than a coincidence: callers treat reads as always available, so a single `Err` aborts a whole
+plugin's start-up work. `tauri-plugin-window-state`'s restore queries `outer_position()`,
+`is_maximized()`, `is_visible()`, `is_decorated()` and `is_fullscreen()?`, and it aborts on
+the first error — with the position getters refusing off-xcb, that abort meant the window was
+never mapped for Readest at all (`integrations/readest/README.md`, "The hidden main window").
+Positions now answer everywhere (the compositor's own placement simply is not readable, so
+Qt's record of the request is what comes back; see `docs/wayland-ci.md`).
+
+Two reads still refuse, deliberately, and only when the platform genuinely has no value to
+give — never by fabricating one: `outer_size` when Qt reports an empty frame rectangle, and
+`theme` when Qt reports the colour scheme as unknown. The demo probes the former and reports
+`DEMO_OK`, i.e. no `field=ERR(…)`, on xcb, offscreen and Wayland alike, so neither fires in
+practice on these platforms; if one ever does for an app, it is the same failure class as the
+position bug and should be treated as such.
+
+The `Err` surface is therefore exactly: the `Err(unimplemented)` methods named above (twelve
+that never return `Ok`), the Wayland stacking hints, dragging when Qt declines
+(`startSystemMove` false, or an invalid resize direction), `set_icon` on malformed icon data,
+those two reads, and `require_window` — an unknown window id, which every method shares.
+
+These lists are read off the code rather than from memory: the table above drifted from it
+once already (a row claiming `set_skip_taskbar` and `set_focusable` were implemented, a cursor
+row claiming five methods when this `tauri-runtime` has four). When the impl changes, re-derive
+them — `grep` for methods whose body returns `Err(` and never `Ok(` is the whole test.
 
 ## 6. `WindowBuilder` (trait `WindowBuilder: WindowBuilderBase`) — ~42 builder methods
 
