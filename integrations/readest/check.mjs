@@ -80,6 +80,19 @@ class Cdp {
       this.ws.send(JSON.stringify({ id, method, params }));
     });
   }
+  /// Evaluate repeatedly until `predicate` accepts the value. A real app is an
+  /// SPA: it navigates (loading skeleton -> route -> content), so a single
+  /// sample can land in an empty DOM and mean nothing.
+  async evalUntil(expression, predicate, timeoutMs = 10000, stepMs = 250, awaitPromise = false) {
+    const deadline = Date.now() + timeoutMs;
+    let last;
+    do {
+      last = await this.eval(expression, awaitPromise);
+      if (predicate(last)) return last;
+      await new Promise((done) => setTimeout(done, stepMs));
+    } while (Date.now() < deadline);
+    return last;
+  }
   async eval(expression, awaitPromise = false) {
     const out = await this.send('Runtime.evaluate', { expression, awaitPromise, returnByValue: true });
     if (out.exceptionDetails) {
@@ -123,8 +136,17 @@ try {
   const internals = await cdp.eval('typeof window.__TAURI_INTERNALS__');
   report('window.__TAURI_INTERNALS__ present', internals === 'object', internals);
 
-  const body = await cdp.eval('document.body ? document.body.innerText.slice(0, 80) : ""');
-  report('page rendered content', Boolean(body && body.trim()), body);
+  const body = await cdp.evalUntil(
+    'document.body ? document.body.innerText.slice(0, 80) : ""',
+    (text) => Boolean(text && text.trim()),
+  );
+  if (body && body.trim()) {
+    report('page rendered content', true, body);
+  } else {
+    // No text yet: fall back to the structural claim, which is still a real one.
+    const children = await cdp.eval('document.body ? document.body.childElementCount : 0');
+    report('page rendered content', children > 0, `childElementCount=${children}`);
+  }
 
   const home = await cdp.eval(
     "window.__TAURI_INTERNALS__.invoke('get_environment_variable', { name: 'HOME' })",
