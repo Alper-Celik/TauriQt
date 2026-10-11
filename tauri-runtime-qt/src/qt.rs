@@ -113,7 +113,7 @@ pub fn qt_on_window_event(id: u64, kind: i32, payload: &str) {
 /// `tauri_runtime::window::WebviewEvent` only has `DragDrop` in 2.12; page-load
 /// and title events must go through the handlers tauri puts on `PendingWebview`.
 pub fn qt_on_webview_event(id: u64, kind: i32, payload: &str) {
-        crate::qtrace!("[tauri-runtime-qt] webview {id} event {kind}: {payload}");
+    crate::qtrace!("[tauri-runtime-qt] webview {id} event {kind}: {payload}");
 }
 
 fn unhandled() -> ffi::QtSchemeResponse {
@@ -135,7 +135,9 @@ pub fn qt_scheme_request(
     headers: &str,
     body: &str,
 ) -> ffi::QtSchemeResponse {
-        crate::qtrace!("[tauri-runtime-qt] scheme_request webview={webview_id} kind={scheme_kind} {method} {url}");
+    crate::qtrace!(
+        "[tauri-runtime-qt] scheme_request webview={webview_id} kind={scheme_kind} {method} {url}"
+    );
 
     let scheme = match scheme_kind {
         0 => "ipc",
@@ -183,33 +185,35 @@ pub fn qt_scheme_request(
         handler(
             &label,
             request,
-            Box::new(move |response: http::Response<std::borrow::Cow<'static, [u8]>>| {
-                let (status, headers, body) = qtcore::scheme::encode_response(response);
-                                crate::qtrace!(
+            Box::new(
+                move |response: http::Response<std::borrow::Cow<'static, [u8]>>| {
+                    let (status, headers, body) = qtcore::scheme::encode_response(response);
+                    crate::qtrace!(
                     "[tauri-runtime-qt] {scheme} {method_owned} {url_owned} -> {status} ({} body bytes)",
                     body.len()
                 );
-                // If `qt_scheme_request` has not returned yet the response can
-                // travel back inline; otherwise it must be delivered through
-                // `qt_scheme_respond`, because this call outlived the bridge call.
-                let deferred = {
-                    let mut gate = gate.lock();
-                    if gate.returned {
-                        true
-                    } else {
-                        gate.immediate = Some(ffi::QtSchemeResponse {
-                            handled: 1,
-                            status,
-                            headers: headers.clone(),
-                            body: body.clone(),
-                        });
-                        false
+                    // If `qt_scheme_request` has not returned yet the response can
+                    // travel back inline; otherwise it must be delivered through
+                    // `qt_scheme_respond`, because this call outlived the bridge call.
+                    let deferred = {
+                        let mut gate = gate.lock();
+                        if gate.returned {
+                            true
+                        } else {
+                            gate.immediate = Some(ffi::QtSchemeResponse {
+                                handled: 1,
+                                status,
+                                headers: headers.clone(),
+                                body: body.clone(),
+                            });
+                            false
+                        }
+                    };
+                    if deferred {
+                        ffi::qt_scheme_respond(request_id, status, &headers, &body);
                     }
-                };
-                if deferred {
-                    ffi::qt_scheme_respond(request_id, status, &headers, &body);
-                }
-            }),
+                },
+            ),
         );
     }
 

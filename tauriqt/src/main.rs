@@ -416,7 +416,8 @@ fn cookies_clear(window: tauri::WebviewWindow<AppRuntime>) -> Result<String, Str
 }
 
 fn main() {
-    let mut builder = tauri::Builder::<AppRuntime>::new().invoke_handler(tauri::generate_handler![greet,
+    let mut builder = tauri::Builder::<AppRuntime>::new().invoke_handler(tauri::generate_handler![
+        greet,
         win_info,
         monitors,
         set_fullscreen,
@@ -426,7 +427,9 @@ fn main() {
         cookies_dump,
         cookie_set,
         cookie_delete,
-        cookies_clear, platform]);
+        cookies_clear,
+        platform
+    ]);
 
     // The Qt runtime carries invoke payloads in a header (QtWebEngine never
     // exposes custom-protocol request bodies), so it ships its own invoke system.

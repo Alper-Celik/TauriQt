@@ -205,9 +205,7 @@ pub(crate) fn eval_with_callback(
     if ffi::qt_webview_eval_with_callback(native, request_id, script) {
         Ok(())
     } else {
-        PENDING_EVAL
-            .lock()
-            .retain(|(id, _, _)| *id != request_id);
+        PENDING_EVAL.lock().retain(|(id, _, _)| *id != request_id);
         Err(missing(native))
     }
 }
@@ -230,7 +228,7 @@ pub(crate) fn on_eval_result(request_id: u64, json: &str) {
     match callback {
         Some(callback) => callback(json.to_owned()),
         None => {
-                        crate::qtrace!(
+            crate::qtrace!(
                 "[tauri-runtime-qt] eval result for unknown/expired request {request_id} ({json})"
             );
         }
@@ -307,7 +305,5 @@ fn live_geometry(native: u64) -> Result<ffi::QtWebviewGeometry> {
 /// "webview not found" error; `Error::CreateWebview` is this crate's webview
 /// error carrier (see `ops`).
 fn missing(native: u64) -> Error {
-    Error::CreateWebview(
-        format!("tauri-runtime-qt: webview {native} does not exist").into(),
-    )
+    Error::CreateWebview(format!("tauri-runtime-qt: webview {native} does not exist").into())
 }

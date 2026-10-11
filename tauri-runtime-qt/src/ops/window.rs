@@ -122,7 +122,10 @@ pub(crate) fn inner_position(native: u64) -> Result<PhysicalPosition<i32>> {
             &format!("the '{platform}' Qt platform does not report top-level window positions"),
         ));
     }
-    Ok(physical_position(native, ffi::qt_window_inner_position(native)))
+    Ok(physical_position(
+        native,
+        ffi::qt_window_inner_position(native),
+    ))
 }
 
 pub(crate) fn outer_position(native: u64) -> Result<PhysicalPosition<i32>> {
@@ -134,7 +137,10 @@ pub(crate) fn outer_position(native: u64) -> Result<PhysicalPosition<i32>> {
             &format!("the '{platform}' Qt platform does not report top-level window positions"),
         ));
     }
-    Ok(physical_position(native, ffi::qt_window_outer_position(native)))
+    Ok(physical_position(
+        native,
+        ffi::qt_window_outer_position(native),
+    ))
 }
 
 pub(crate) fn title(native: u64) -> Result<String> {
@@ -297,9 +303,7 @@ pub(crate) fn set_icon(native: u64, icon: Icon) -> Result<()> {
         return Err(Error::InvalidIcon(message.into()));
     }
     if !ffi::qt_window_set_icon(native, icon.rgba.as_ref(), icon.width, icon.height) {
-        return Err(Error::InvalidIcon(
-            "Qt rejected the icon pixels".into(),
-        ));
+        return Err(Error::InvalidIcon("Qt rejected the icon pixels".into()));
     }
     Ok(())
 }

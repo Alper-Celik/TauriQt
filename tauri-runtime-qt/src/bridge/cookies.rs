@@ -75,7 +75,15 @@ pub fn qt_on_cookie_added(
     expires_ms: i64,
 ) {
     crate::ops::cookies::on_cookie_added(
-        webview_ptr, name, value, domain, path, secure, http_only, same_site, expires_ms,
+        webview_ptr,
+        name,
+        value,
+        domain,
+        path,
+        secure,
+        http_only,
+        same_site,
+        expires_ms,
     );
 }
 

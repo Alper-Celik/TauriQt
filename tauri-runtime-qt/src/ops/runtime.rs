@@ -138,7 +138,7 @@ where
 /// after `set_event_sink`.
 pub fn start_pump() {
     if !ffi::qt_runtime_start_pump() {
-                crate::qtrace!("[tauri-runtime-qt] start_pump: no QApplication yet, events stay queued");
+        crate::qtrace!("[tauri-runtime-qt] start_pump: no QApplication yet, events stay queued");
     }
     debug::fire_probe();
 }
@@ -230,7 +230,9 @@ fn native_platform() -> NativePlatform {
 /// xcb connection, the Xlib variant otherwise. Wayland: `QWidget::winId()` is
 /// the window's `wl_surface*`. Unknown handles, missing windows and platforms
 /// without native handles report `HandleError::Unavailable`.
-pub(crate) fn window_handle(native: u64) -> std::result::Result<WindowHandle<'static>, HandleError> {
+pub(crate) fn window_handle(
+    native: u64,
+) -> std::result::Result<WindowHandle<'static>, HandleError> {
     let platform = native_platform();
     let winid = ffi::qt_runtime_window_winid(native);
 
@@ -272,7 +274,8 @@ pub(crate) fn display_handle() -> std::result::Result<DisplayHandle<'static>, Ha
 
     let raw = match platform {
         NativePlatform::Xcb => {
-            let connection = NonNull::new(pointer as *mut c_void).ok_or(HandleError::Unavailable)?;
+            let connection =
+                NonNull::new(pointer as *mut c_void).ok_or(HandleError::Unavailable)?;
             RawDisplayHandle::Xcb(XcbDisplayHandle::new(Some(connection), X11_DEFAULT_SCREEN))
         }
         NativePlatform::Xlib => {
@@ -354,7 +357,9 @@ mod debug {
                     break;
                 }
             }
-            eprintln!("[tauri-runtime-qt] proxy-debug: queueing 3 probe events from a worker thread");
+            eprintln!(
+                "[tauri-runtime-qt] proxy-debug: queueing 3 probe events from a worker thread"
+            );
             std::thread::spawn(|| {
                 for index in 1..=3 {
                     std::thread::sleep(Duration::from_millis(200));

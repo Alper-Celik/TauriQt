@@ -28,8 +28,8 @@ use tauri_runtime::{
     monitor::Monitor,
     webview::{DetachedWebview, PendingWebview},
     window::{
-        CursorIcon, DetachedWindow, PendingWindow, RawWindow, WindowEvent, WindowId,
-        WindowSizeConstraints, WebviewEvent,
+        CursorIcon, DetachedWindow, PendingWindow, RawWindow, WebviewEvent, WindowEvent, WindowId,
+        WindowSizeConstraints,
     },
     Cookie, DeviceEventFilter, Error, EventLoopProxy, Icon, ProgressBarState, ResizeDirection,
     Result, RunEvent, RuntimeInitArgs, UserAttentionType, UserEvent, WebviewEventId, WindowEventId,
@@ -95,7 +95,8 @@ type WindowEventHandler = Box<dyn Fn(&WindowEvent) + Send + 'static>;
 type WebviewEventHandler = Box<dyn Fn(&WebviewEvent) + Send + 'static>;
 
 /// `(event id, native window handle, handler)`.
-static WINDOW_HANDLERS: Mutex<Vec<(WindowEventId, u64, WindowEventHandler)>> = Mutex::new(Vec::new());
+static WINDOW_HANDLERS: Mutex<Vec<(WindowEventId, u64, WindowEventHandler)>> =
+    Mutex::new(Vec::new());
 /// `(event id, native webview handle, handler)`.
 static WEBVIEW_HANDLERS: Mutex<Vec<(WebviewEventId, u64, WebviewEventHandler)>> =
     Mutex::new(Vec::new());
@@ -103,7 +104,10 @@ static WEBVIEW_HANDLERS: Mutex<Vec<(WebviewEventId, u64, WebviewEventHandler)>> 
 static NEXT_EVENT_ID: AtomicU32 = AtomicU32::new(1);
 
 /// Registers a window event handler for a native window handle.
-fn register_window_handler<F: Fn(&WindowEvent) + Send + 'static>(native: u64, f: F) -> WindowEventId {
+fn register_window_handler<F: Fn(&WindowEvent) + Send + 'static>(
+    native: u64,
+    f: F,
+) -> WindowEventId {
     let id = NEXT_EVENT_ID.fetch_add(1, Ordering::Relaxed);
     WINDOW_HANDLERS.lock().push((id, native, Box::new(f)));
     id
@@ -124,8 +128,11 @@ static NATIVE_WINDOWS: Mutex<Vec<(WindowId, u64)>> = Mutex::new(Vec::new());
 
 /// Custom-protocol handler as tauri registers it on a pending webview.
 type SchemeHandler = Box<
-    dyn Fn(&str, http::Request<Vec<u8>>, Box<dyn FnOnce(http::Response<std::borrow::Cow<'static, [u8]>>) + Send>)
-        + Send
+    dyn Fn(
+            &str,
+            http::Request<Vec<u8>>,
+            Box<dyn FnOnce(http::Response<std::borrow::Cow<'static, [u8]>>) + Send>,
+        ) + Send
         + Sync
         + 'static,
 >;
@@ -163,7 +170,7 @@ fn build_window<T: UserEvent>(
     }
     let id = WindowId::from(native as u32);
     NATIVE_WINDOWS.lock().push((id, native));
-        crate::qtrace!("[tauri-runtime-qt] window '{label}' created (native {native})");
+    crate::qtrace!("[tauri-runtime-qt] window '{label}' created (native {native})");
     Ok((id, QtWindowDispatcher { native }))
 }
 
@@ -192,12 +199,16 @@ fn build_webview<T: UserEvent>(
     ops::cookies::register_webview(native, view_ptr);
 
     for script in &pending.webview_attributes.initialization_scripts {
-        bridge::webview::ffi::qt_webview_add_init_script(native, &script.script, script.for_main_frame_only);
+        bridge::webview::ffi::qt_webview_add_init_script(
+            native,
+            &script.script,
+            script.for_main_frame_only,
+        );
     }
     if !pending_url.is_empty() {
         bridge::webview::ffi::qt_webview_navigate(native, &pending_url);
     }
-        crate::qtrace!(
+    crate::qtrace!(
         "[tauri-runtime-qt] webview '{label}' created in window {window_native} (native {native}), url {}",
         pending_url
     );
@@ -328,10 +339,7 @@ impl rt::window::WindowBuilder for QtWindowBuilder {
         self
     }
 
-    fn inner_size_constraints(
-        self,
-        _constraints: WindowSizeConstraints,
-    ) -> Self {
+    fn inner_size_constraints(self, _constraints: WindowSizeConstraints) -> Self {
         self
     }
 
@@ -391,7 +399,10 @@ impl rt::window::WindowBuilder for QtWindowBuilder {
     }
 
     fn decorations(self, decorations: bool) -> Self {
-        Self { decorations, ..self }
+        Self {
+            decorations,
+            ..self
+        }
     }
 
     fn always_on_bottom(self, _always_on_bottom: bool) -> Self {
@@ -639,7 +650,7 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
     }
 
     fn run<F: FnMut(RunEvent<T>) + 'static>(self, mut callback: F) {
-                crate::qtrace!("[tauri-runtime-qt] run: emitting Ready");
+        crate::qtrace!("[tauri-runtime-qt] run: emitting Ready");
         callback(RunEvent::Ready);
         let callback = std::rc::Rc::new(std::cell::RefCell::new(callback));
         let user_callback = std::rc::Rc::clone(&callback);
@@ -649,7 +660,7 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
             }
         }));
         ops::runtime::start_pump();
-                crate::qtrace!("[tauri-runtime-qt] run: entering Qt event loop");
+        crate::qtrace!("[tauri-runtime-qt] run: entering Qt event loop");
         qt::ffi::qt_run();
         callback.borrow_mut()(RunEvent::Exit);
     }
@@ -1041,7 +1052,9 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn set_visible_on_all_workspaces(&self, _visible_on_all_workspaces: bool) -> Result<()> {
-        Err(ops::unimplemented("WindowDispatch::set_visible_on_all_workspaces"))
+        Err(ops::unimplemented(
+            "WindowDispatch::set_visible_on_all_workspaces",
+        ))
     }
 
     fn set_background_color(&self, color: Option<Color>) -> Result<()> {
@@ -1081,7 +1094,9 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     /// feature); older versions have no such slot in the trait.
     #[cfg(feature = "tauri-runtime-2-12")]
     fn set_fullscreen_on_monitor(&self, _position: rt::dpi::PhysicalPosition<f64>) -> Result<()> {
-        Err(ops::unimplemented("WindowDispatch::set_fullscreen_on_monitor"))
+        Err(ops::unimplemented(
+            "WindowDispatch::set_fullscreen_on_monitor",
+        ))
     }
 
     fn set_focusable(&self, _focusable: bool) -> Result<()> {
@@ -1113,7 +1128,9 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
     }
 
     fn set_ignore_cursor_events(&self, _ignore: bool) -> Result<()> {
-        Err(ops::unimplemented("WindowDispatch::set_ignore_cursor_events"))
+        Err(ops::unimplemented(
+            "WindowDispatch::set_ignore_cursor_events",
+        ))
     }
 
     fn start_resize_dragging(&self, direction: ResizeDirection) -> Result<()> {
@@ -1123,7 +1140,11 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
         )
     }
 
-    fn set_badge_count(&self, _count: Option<i64>, _desktop_filename: Option<String>) -> Result<()> {
+    fn set_badge_count(
+        &self,
+        _count: Option<i64>,
+        _desktop_filename: Option<String>,
+    ) -> Result<()> {
         // Linux: unsupported by the trait's own documentation.
         Ok(())
     }
