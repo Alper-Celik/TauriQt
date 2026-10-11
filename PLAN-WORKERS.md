@@ -138,6 +138,42 @@ ChromeDriver-side, cookie writes fail its own domain validation (`POST /cookie` 
 via CDP `Network.setCookie` or through our cookie mirror instead. Un-addable and un-fakeable:
 tracing, GPU state, browser-context management.
 
+
+## Wayland-first CI harness (decision)
+
+X11 is deprecated (RHEL) and our users' sessions are Wayland, so **Wayland is the primary
+target**; X11 gets one small guard job only because our window ops branch on
+`QGuiApplication::platformName()` and that branch would otherwise rot.
+
+Everything comes from **Nix** — no runner-provided packages (no `apt-get`, no `actions/setup-*`).
+Even on an Ubuntu-based runner we bring sway/grim/cage/weston/dbus/Xvfb/node/chromedriver ourselves
+via the flake (`devShells.<system>.ci`) or `nix shell`.
+
+### Tiers
+| Tier | What | When |
+|---|---|---|
+| A | **Headless sway sessions** (`WLR_BACKENDS=headless WLR_RENDERER=pixman`), one private `XDG_RUNTIME_DIR` + `SWAYSOCK` per session → a dozen in parallel on one runner. `xwayland disable` guarantees Wayland-native coverage. | per-PR |
+| B | **VM + KVM** `nixosTest` (hermetic: pinned NixOS, kernel/net isolation). KVM is available on GitHub amd64 runners via the Determinate Nix installer (GitHub's own docs still call nested virt unsupported); TCG fallback keeps it runnable. The test driver also gained a **systemd-nspawn container backend** for non-GUI tiers (its docs note: no GUI/setuid in the sandbox). | nightly / release |
+| C | One tiny xcb (Xvfb) job | per-PR |
+
+### Frozen session interface
+```
+scripts/sway-session.sh start [--outputs N] [--scale S] [--xwayland] [--json]
+scripts/sway-session.sh stop <session-id|--all>
+scripts/sway-session.sh exec <session-id> -- <cmd...>
+scripts/wayland-smoke.sh [--timeout S]
+scripts/sway-oracle.sh
+```
+
+### Why the compositor is our oracle
+Wayland deliberately has no toplevel position: `xdg-shell` configure carries size + states only. So
+`inner_position`/`outer_position`/`set_position` stay `Err` **by design** (documented, not a gap),
+while the *compositor* knows the real rect and state — `swaymsg -t get_tree` therefore gives us an
+external oracle to assert that asymmetry, and to drive state changes (`fullscreen enable`, `focus`,
+`move`) that our app must then reflect. Protocol notes for future runtime work: `xdg-activation-v1`
+(would make `set_focus` reliable without a token), `xdg-toplevel-icon-v1` (would make `set_icon`
+real), `wlr-foreign-toplevel-management` (state + `set_rectangle` hints, still no position read).
+
 ## Risks
 
 - **Qt/Wayland semantics**: absolute positioning, `always_on_top`, `skip_taskbar` are not
