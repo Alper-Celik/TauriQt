@@ -115,7 +115,7 @@ was watched appear only after the initial load/navigation; expiry-only changes m
 event; CHIPS (`partitioned`) has no Qt equivalent.
 
 
-## Testing track (Playwright over CDP)
+## Testing track (WebDriver via chromedriver)
 
 Goal: automate testing of apps running on this runtime with **Playwright**, and ultimately run
 third-party Tauri app suites (Readest) against it.
@@ -123,15 +123,20 @@ third-party Tauri app suites (Readest) against it.
 | Slice | What | Status |
 |---|---|---|
 | T1 | **CDP capability probe**: measure exactly what QtWebEngine's CDP answers (battery incl. `Browser.*`, `Target.*`, `Page.captureScreenshot`, `Input.*`, `Network.*Cookies`, `Runtime.evaluate` + `awaitPromise` invoking a Tauri command). Deliverable: `tools/cdp-probe/` + `docs/cdp-support-matrix.md`. | running |
-| T1b | **chromedriver attach experiment**: `chromedriver --port=4444` + capabilities `{browserName: chrome, goog:chromeOptions: {debuggerAddress: "127.0.0.1:9222"}}` against our app's CDP port. If it attaches, WebDriver support is largely free (chromedriver is the battle-tested WebDriver→CDP translator) and Readest's WDIO/vitest tiers can target it. | running |
-| T2 | **WebDriver server** (decision: this is the primary path; the CDP proxy is only needed if T1b fails). Architecture: sidecar HTTP server speaking classic W3C WebDriver, backed by (a) CDP for JS/DOM/network — `Runtime.evaluate` for `execute/sync|async`, `DOM.querySelectorAll`+`describeNode` for element handles, `Network.*Cookies` — and (b) a **test-control channel into the app** for what CDP cannot do on Qt: trusted input (`QMouseEvent`/`QKeyEvent` into the webview), screenshots (`QWidget::grab`), window ops, and our cookie mirror. No BiDi (do not advertise `webSocketUrl`, so WDIO stays on the classic protocol). | planned |
-| T2b | **Window/browser-level commands implemented for real**: proxy routes `Browser.get/setWindowBounds`, focus, fullscreen, close to a test-control channel in the app (mapped onto our `WindowDispatch` ops). | planned |
-| T3 | **Test-control channel** in the app (feature-gated, e.g. `test-control`): tiny JSON-RPC on a local socket mapped onto `ops::window` / `ops::webview` / `ops::cookies` + `QWidget::grab` screenshots. Gives the WebDriver server *trusted* input and real screenshots (CDP-side input would be synthetic/`isTrusted=false`; Qt-side injection is the real thing). | planned |
+| T1b | **DONE — chromedriver attaches.** Bare attach fails only because QtWebEngine publishes its CDP product string as `qApp->applicationName() "/" applicationVersion()` = `tauri-runtime-qt/` (empty version), which chromedriver can't parse; a 3-line rewrite of `/json/version` to a Chrome version whose **major matches the chromedriver** makes the session succeed: **33/39 WebDriver endpoints pass**, including `execute/sync|async` calling our Tauri `invoke()` (`Hello, wd-sync! — from linux`), element find/text/click/keys, `Input.dispatch*` (delivered with `isTrusted=true`), and a real screenshot (PNG 1277x1562). Only CDP method Qt lacks: **`Browser.getWindowForTarget`** → `window/rect` 404; plus ChromeDriver-side cookie-domain validation (`POST /cookie` 400) and legacy JSONWP endpoints. Details: `docs/webdriver-attach-findings.md`, harness in `tools/webdriver-probe/`. |
+| T2 | **Wire chromedriver into the test harness** (no WebDriver shim needed): `scripts/webdriver-qt.sh` that starts the app with the CDP port, the `/json/version` fix-up proxy, and chromedriver; WDIO/vitest point at it. Decide version pairing: (a) keep the test-only fix-up proxy (no runtime change, minor version spoof) or (b) pair a chromedriver whose major matches Chromium 140 and give Qt a Chrome-like product string via an env-gated override in `qt_init` (no spoof in the default path). | planned |
+| T3 | **Window-op bridge only** (input/screenshots turned out to work over CDP, so this is now narrowly scoped): `window/rect` and friends need `Browser.getWindowForTarget`, which Qt lacks — serve those from a test-control channel in the app (JSON-RPC over a local socket mapped onto `ops::window`), so WebDriver window commands and CDP's missing Browser calls have a real implementation. | planned |
 | T4 | **Run third-party suites**: Readest's `*.tauri.test.ts` (`@vitest/browser-webdriverio`) and WDIO E2E tiers against our WebDriver endpoint (standalone or `driverProvider`) — plus our own smoke specs, re-run on wry (`--features wry`) for engine parity. | planned |
 
-Known blockers/limits: Qt's CDP omits browser-context management (playwright#36961, closed
-not-planned) — hence the proxy; engine-internal features Qt did not wire (tracing, GPU state,
-possibly `Input.*`/`captureScreenshot`) cannot be added or honestly faked.
+Measured limits (T1b): Qt's CDP supports `Runtime.evaluate`, `DOM.*`, element queries via
+ChromeDriver's own JS, `Network.getCookies`, **`Input.dispatchKeyEvent`/`dispatchMouseEvent`
+(delivered with `isTrusted=true`)**, and **`Page.captureScreenshot`** (real PNG). What Qt does not
+wire is browser-level: `Browser.getWindowForTarget` (→ WebDriver `window/rect` 404) and
+`Browser.setDownloadBehavior` (which is also why Playwright's `connectOverCDP` aborts —
+playwright#36961, closed not-planned; irrelevant now that we use WebDriver + chromedriver).
+ChromeDriver-side, cookie writes fail its own domain validation (`POST /cookie` 400) — set cookies
+via CDP `Network.setCookie` or through our cookie mirror instead. Un-addable and un-fakeable:
+tracing, GPU state, browser-context management.
 
 ## Risks
 
