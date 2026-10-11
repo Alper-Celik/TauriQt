@@ -48,8 +48,8 @@ fight the tooling.
 
 ## Conventions this repository expects
 
-- **REUSE is required and enforced** (`just lint-reuse`). Add
-  `SPDX-FileCopyrightText` / `SPDX-License-Identifier: MIT` to every new file that can hold a
+- **REUSE is required and enforced** (`just lint-reuse`). Add the two SPDX tags — the
+  copyright one, and the licence one whose value is `MIT` — to every new file that can hold a
   comment — markdown gets the two-line HTML comment, shell gets it under the shebang,
   `.gitignore`/`Cargo.toml` get `#` lines. `REUSE.toml` is only for formats that cannot
   (JSON, generated lockfiles, binaries, captured probe dumps) and every entry there carries a
