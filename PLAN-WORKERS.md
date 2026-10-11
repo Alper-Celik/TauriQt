@@ -114,6 +114,24 @@ Mirror semantics to document: it is an **observed snapshot** — cookies written
 was watched appear only after the initial load/navigation; expiry-only changes may not emit an
 event; CHIPS (`partitioned`) has no Qt equivalent.
 
+
+## Testing track (Playwright over CDP)
+
+Goal: automate testing of apps running on this runtime with **Playwright**, and ultimately run
+third-party Tauri app suites (Readest) against it.
+
+| Slice | What | Status |
+|---|---|---|
+| T1 | **CDP capability probe**: measure exactly what QtWebEngine's CDP answers (battery incl. `Browser.*`, `Target.*`, `Page.captureScreenshot`, `Input.*`, `Network.*Cookies`, `Runtime.evaluate` + `awaitPromise` invoking a Tauri command). Deliverable: `tools/cdp-probe/` + `docs/cdp-support-matrix.md`. | running |
+| T2 | **CDP proxy** built from T1's measured stub table: stubs capability/management commands, passes the rest through, logs every stub loudly, and **fails tests that depended on a stubbed command** (no silent lies). | planned |
+| T2b | **Window/browser-level commands implemented for real**: proxy routes `Browser.get/setWindowBounds`, focus, fullscreen, close to a test-control channel in the app (mapped onto our `WindowDispatch` ops). | planned |
+| T3 | Playwright specs for our app + the same specs re-run on wry (`--features wry`) for engine parity. | planned |
+| T4 | **WebDriver shim (if needed)**: Readest's own `*.tauri.test.ts` / WDIO E2E tiers talk WebDriver (embedded provider, port 4445), not CDP. Running *their* suites unchanged requires a W3C-WebDriver endpoint over CDP (like chromedriver does). Otherwise we drive their app with our own Playwright specs. | planned |
+
+Known blockers/limits: Qt's CDP omits browser-context management (playwright#36961, closed
+not-planned) — hence the proxy; engine-internal features Qt did not wire (tracing, GPU state,
+possibly `Input.*`/`captureScreenshot`) cannot be added or honestly faked.
+
 ## Risks
 
 - **Qt/Wayland semantics**: absolute positioning, `always_on_top`, `skip_taskbar` are not
