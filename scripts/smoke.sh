@@ -23,16 +23,29 @@ EXPECT="${SMOKE_EXPECT:-DEMO_OK}"
 LOG="$(mktemp -t tauriqt-smoke.XXXXXX.log)"
 trap 'rm -f "$LOG"' EXIT
 
-if [[ "${SMOKE_SKIP_BUILD:-0}" != "1" ]]; then
+# Three run modes, same assertions:
+#   1. TAURIQT_BIN set          -> run that binary directly (Nix check / packaged app);
+#      no `nix`, no LD_LIBRARY_PATH fiddling (a Nix build sandbox has neither our idiom nor our PATH).
+#   2. SMOKE_SKIP_BUILD=1       -> use ./target/debug/tauriqt from the devshell.
+#   3. default                  -> build first, then run.
+APP="${TAURIQT_BIN:-./target/debug/tauriqt}"
+CHROME_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox}"
+
+if [[ -z "${TAURIQT_BIN:-}" && "${SMOKE_SKIP_BUILD:-0}" != "1" ]]; then
   echo "==> building tauriqt"
   LD_LIBRARY_PATH= nix develop -c sh -c 'QMAKE=$(which qmake); cargo build -p tauriqt' >/dev/null
 fi
 
 echo "==> running for ${TIMEOUT}s (log: $LOG)"
-# `--no-sandbox` is required inside the agent firejail; harmless on a real desktop.
-LD_LIBRARY_PATH= nix develop -c sh -c \
-  "QTWEBENGINE_CHROMIUM_FLAGS=\"--no-sandbox\" timeout ${TIMEOUT} ./target/debug/tauriqt" \
-  >"$LOG" 2>&1 || true
+if [[ -n "${TAURIQT_BIN:-}" ]]; then
+  # Direct run: no devshell, no `nix` — the wrapper binary carries its own environment.
+  QTWEBENGINE_CHROMIUM_FLAGS="$CHROME_FLAGS" timeout "$TIMEOUT" "$APP" >"$LOG" 2>&1 || true
+else
+  # Workstation path: the app needs the Qt/Chromium environment from the flake.
+  LD_LIBRARY_PATH= nix develop -c sh -c \
+    "QTWEBENGINE_CHROMIUM_FLAGS=\"$CHROME_FLAGS\" timeout ${TIMEOUT} ${APP}" \
+    >"$LOG" 2>&1 || true
+fi
 
 failures=0
 expect() {
