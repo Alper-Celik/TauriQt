@@ -318,7 +318,8 @@ app_tree() {
 # toplevel says *which* windows exist (and what the app printed) instead of only
 # that the match failed.
 dump_tree() {
-  local tag="$1" file="$WORK/tree-$tag.json"
+  local tag="$1"
+  local file="$WORK/tree-$tag.json"
   swaymsg -t get_tree -r >"$file" 2>/dev/null || true
   echo "  info tree dump         : $file"
   jq -r '[.. | objects | select(.shell? == "xdg_shell")
