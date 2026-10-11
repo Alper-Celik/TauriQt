@@ -1,0 +1,787 @@
+{
+  "startedAt": "2026-10-11T14:29:12.623Z",
+  "cdpAddress": "127.0.0.1:9223",
+  "chromedriver": {
+    "path": "/nix/store/f4higzcmy8c4s41vb8xvj4h4r9bdbcd9-chromedriver-unwrapped-155.0.8059.39/bin/chromedriver",
+    "port": 4444,
+    "version": "ChromeDriver 155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0})",
+    "major": 155,
+    "status": {
+      "value": {
+        "build": {
+          "version": "155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0})"
+        },
+        "message": "ChromeDriver ready for new sessions.",
+        "os": {
+          "arch": "aarch64",
+          "name": "Linux",
+          "version": "7.1.13"
+        },
+        "ready": true
+      }
+    },
+    "browser": "tauri-runtime-qt/",
+    "browserMajor": null,
+    "versionMismatch": false,
+    "exitCode": null,
+    "stderrTail": ""
+  },
+  "cdp": {
+    "version": {
+      "status": 200,
+      "body": {
+        "Browser": "tauri-runtime-qt/",
+        "Protocol-Version": "1.3",
+        "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+        "V8-Version": "14.0.365.10",
+        "WebKit-Version": "537.36 (@0000000000000000000000000000000000000000)",
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/browser/8ae030ad-7f16-4d15-a313-2ca6c0221c38"
+      }
+    },
+    "list": {
+      "status": 200,
+      "body": [
+        {
+          "description": "",
+          "devtoolsFrontendUrl": "/devtools/inspector.html?ws=127.0.0.1:9223/devtools/page/CB2B252842EA97D2934E740F2D0FF7FE",
+          "id": "CB2B252842EA97D2934E740F2D0FF7FE",
+          "title": "DEMO_OK",
+          "type": "page",
+          "url": "tauri://localhost/",
+          "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/page/CB2B252842EA97D2934E740F2D0FF7FE"
+        }
+      ]
+    }
+  },
+  "session": {
+    "request": {
+      "capabilities": {
+        "alwaysMatch": {
+          "browserName": "chrome",
+          "goog:chromeOptions": {
+            "debuggerAddress": "127.0.0.1:9224"
+          }
+        }
+      }
+    },
+    "response": {
+      "value": {
+        "capabilities": {
+          "acceptInsecureCerts": false,
+          "browserName": "chrome",
+          "browserVersion": "155.0.8059.39",
+          "chrome": {
+            "chromedriverVersion": "155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0})"
+          },
+          "fedcm:accounts": true,
+          "goog:chromeOptions": {
+            "debuggerAddress": "127.0.0.1:9224"
+          },
+          "pageLoadStrategy": "normal",
+          "platformName": "",
+          "proxy": {},
+          "setWindowRect": false,
+          "strictFileInteractability": false,
+          "timeouts": {
+            "implicit": 0,
+            "pageLoad": 300000,
+            "script": 30000
+          },
+          "unhandledPromptBehavior": "dismiss and notify",
+          "webauthn:extension:cmtgKey": true,
+          "webauthn:extension:credBlob": true,
+          "webauthn:extension:largeBlob": true,
+          "webauthn:extension:minPinLength": true,
+          "webauthn:extension:prf": true,
+          "webauthn:virtualAuthenticators": true
+        },
+        "sessionId": "cfb8b9a3b9e0b3d19b850f39813df21a"
+      }
+    },
+    "httpStatus": 200,
+    "id": "cfb8b9a3b9e0b3d19b850f39813df21a",
+    "capabilities": {
+      "acceptInsecureCerts": false,
+      "browserName": "chrome",
+      "browserVersion": "155.0.8059.39",
+      "chrome": {
+        "chromedriverVersion": "155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0})"
+      },
+      "fedcm:accounts": true,
+      "goog:chromeOptions": {
+        "debuggerAddress": "127.0.0.1:9224"
+      },
+      "pageLoadStrategy": "normal",
+      "platformName": "",
+      "proxy": {},
+      "setWindowRect": false,
+      "strictFileInteractability": false,
+      "timeouts": {
+        "implicit": 0,
+        "pageLoad": 300000,
+        "script": 30000
+      },
+      "unhandledPromptBehavior": "dismiss and notify",
+      "webauthn:extension:cmtgKey": true,
+      "webauthn:extension:credBlob": true,
+      "webauthn:extension:largeBlob": true,
+      "webauthn:extension:minPinLength": true,
+      "webauthn:extension:prf": true,
+      "webauthn:virtualAuthenticators": true
+    }
+  },
+  "steps": [
+    {
+      "name": "url.get.initial",
+      "at": "2026-10-11T14:29:12.965Z",
+      "request": {
+        "method": "GET",
+        "path": "/url",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 20,
+      "body": "{\"value\":\"tauri://localhost/\"}",
+      "ok": true
+    },
+    {
+      "name": "url.set.tauri",
+      "at": "2026-10-11T14:29:13.013Z",
+      "request": {
+        "method": "POST",
+        "path": "/url",
+        "body": {
+          "url": "tauri://localhost"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 48,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "url.get.after",
+      "at": "2026-10-11T14:29:13.029Z",
+      "request": {
+        "method": "GET",
+        "path": "/url",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 15,
+      "body": "{\"value\":\"tauri://localhost/\"}",
+      "ok": true
+    },
+    {
+      "name": "title",
+      "at": "2026-10-11T14:29:13.046Z",
+      "request": {
+        "method": "GET",
+        "path": "/title",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 17,
+      "body": "{\"value\":\"TauriQt — runtime demo\"}",
+      "ok": true
+    },
+    {
+      "name": "source",
+      "at": "2026-10-11T14:29:13.152Z",
+      "request": {
+        "method": "GET",
+        "path": "/source",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 106,
+      "body": "{\"value\":\"\\u003Chtml lang=\\\"en\\\">\\u003Chead>\\n    \\u003Cmeta charset=\\\"utf-8\\\">\\n    \\u003Ctitle>TauriQt — runtime demo\\u003C/title>\\n    \\u003Cstyle>\\n      body {\\n        font-family: system-ui, sans-serif;\\n        margin: 2rem;\\n      }\\n      h1 {\\n        margin-bottom: 0.25rem;\\n      }\\n      #summary {\\n        font-size: 1.25rem;\\n        font-weight: 600;\\n        margin: 0.5rem 0 1rem;\\n      }\\n      #result {\\n        font-family: ui-monospace, monospace;\\n        font-size: 0.85rem;\\n        line-height: 1.45;\\n        white-space: pre-wrap;\\n        word-break: break-word;\\n      }\\n      .ok {\\n        color: #0a7d28;\\n      }\\n      .bad {\\n        color: #b3261e;\\n      }\\n    \\u003C/style>\\n  \\u003C/head>\\n  \\u003Cbody>\\n    \\u003Ch1>TauriQt runtime demo\\u003C/h1>\\n    \\u003Cp id=\\\"summary\\\">running …\\u003C/p>\\n    \\u003Cdiv id=\\\"result\\\">\\u003Cdiv class=\\\"ok\\\">OK   greet: Hello, Qt! — from linux\\u003C/div>\\u003Cdiv class=\\\"ok\\\">OK   win_info: inner_size=1277x1562; outer_size=1277x1562; inner_position=0,0; outer_position=0,0; scale_factor=1.5000; title=TauriQt — demo title; is_fullscreen=false; is_minimized=false; is_maximized=false; is_focused=false; is_decorated=true; is_resizable=true; is_visible=true; is_always_on_top=false; is_maximizable=true; is_minimizable=true; is_closable=true\\u003C/div>\\u003Cdiv class=\\\"ok\\\">OK   monitors: available_monitors=1 | #0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; primary_monitor=#0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; current_monitor=#0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000\\u003C/div>\\u003Cdiv class=\\\"ok\\\">OK   set_title: set_title(\\\"TauriQt — demo title\\\")=OK\\u003C/div>\\u003Cdiv class=\\\"ok\\\">OK   fullscreen_on: set_fullscreen(true)=OK\\u003C/div>\\u003C/div>\\n    \\u003Cscript>\\n      // Titles are surfaced to the runtime as events, so they double as a\\n      // terminal-visible probe while the IPC path is bein…",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.title",
+      "at": "2026-10-11T14:29:13.224Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "return document.title;",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 72,
+      "body": "{\"value\":\"DEMO_OK\"}",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.invoke.greet",
+      "at": "2026-10-11T14:29:13.243Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "return window.__TAURI_INTERNALS__.invoke('greet', { name: 'wd-sync' });",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 18,
+      "body": "{\"value\":\"Hello, wd-sync! — from linux\"}",
+      "ok": true
+    },
+    {
+      "name": "execute/async.invoke.greet",
+      "at": "2026-10-11T14:29:13.263Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/async",
+        "body": {
+          "script": "const done = arguments[arguments.length - 1];window.__TAURI_INTERNALS__.invoke('greet', { name: 'wd-async' }).then((value) => done(value), (err) => done('ERR: ' + err));",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 19,
+      "body": "{\"value\":\"Hello, wd-async! — from linux\"}",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.make-input",
+      "at": "2026-10-11T14:29:13.274Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "const input = document.createElement('input');input.id = 'wd-probe-input'; input.value = 'wd-probe-value';document.body.appendChild(input); return 'created';",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 11,
+      "body": "{\"value\":\"created\"}",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.install-click-probe",
+      "at": "2026-10-11T14:29:13.280Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "const button = document.createElement('button');button.id = 'wd-probe-button'; button.textContent = 'click me';button.onclick = (event) => { window.__wd_click = event.isTrusted ? 'trusted' : 'untrusted'; };document.body.appendChild(button); return 'installed';",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 6,
+      "body": "{\"value\":\"installed\"}",
+      "ok": true
+    },
+    {
+      "name": "element.find.button",
+      "at": "2026-10-11T14:29:13.303Z",
+      "request": {
+        "method": "POST",
+        "path": "/element",
+        "body": {
+          "using": "css selector",
+          "value": "#wd-probe-button"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 23,
+      "body": "{\"value\":{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.15\"}}",
+      "ok": true
+    },
+    {
+      "name": "element.button.click",
+      "at": "2026-10-11T14:29:13.374Z",
+      "request": {
+        "method": "POST",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.15/click",
+        "body": {}
+      },
+      "status": 200,
+      "elapsedMs": 71,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.read-click-probe",
+      "at": "2026-10-11T14:29:13.380Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "return window.__wd_click === undefined ? 'NO_CLICK_EVENT' : window.__wd_click;",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 5,
+      "body": "{\"value\":\"trusted\"}",
+      "ok": true
+    },
+    {
+      "name": "element.find.body",
+      "at": "2026-10-11T14:29:13.392Z",
+      "request": {
+        "method": "POST",
+        "path": "/element",
+        "body": {
+          "using": "css selector",
+          "value": "body"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 12,
+      "body": "{\"value\":{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16\"}}",
+      "ok": true
+    },
+    {
+      "name": "element.body.text",
+      "at": "2026-10-11T14:29:13.418Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/text",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 25,
+      "body": "{\"value\":\"TauriQt runtime demo\\nDEMO_OK — every probed command succeeded\\nOK   greet: Hello, Qt! — from linux\\nOK   win_info: inner_size=1277x1562; outer_size=1277x1562; inner_position=0,0; outer_position=0,0; scale_factor=1.5000; title=TauriQt — demo title; is_fullscreen=false; is_minimized=false; is_maximized=false; is_focused=false; is_decorated=true; is_resizable=true; is_visible=true; is_always_on_top=false; is_maximizable=true; is_minimizable=true; is_closable=true\\nOK   monitors: available_monitors=1 | #0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; primary_monitor=#0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; current_monitor=#0 name=Some(\\\"eDP-1\\\") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000\\nOK   set_title: set_title(\\\"TauriQt — demo title\\\")=OK\\nOK   fullscreen_on: set_fullscreen(true)=OK\\nOK   win_info_after_fullscreen: inner_size=2561x1601; outer_size=2561x1601; inner_position=0,0; outer_position=0,0; scale_factor=1.5000; title=TauriQt — demo title; is_fullscreen=true; is_minimized=false; is_maximized=false; is_focused=false; is_decorated=true; is_resizable=true; is_visible=true; is_always_on_top=false; is_maximizable=true; is_minimizable=true; is_closable=true\\nOK   fullscreen_off: set_fullscreen(false)=OK\\nclick me\"}",
+      "ok": true
+    },
+    {
+      "name": "element.body.click",
+      "at": "2026-10-11T14:29:13.481Z",
+      "request": {
+        "method": "POST",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/click",
+        "body": {}
+      },
+      "status": 200,
+      "elapsedMs": 63,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "element.body.value",
+      "at": "2026-10-11T14:29:13.494Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/value",
+        "body": null
+      },
+      "status": 404,
+      "elapsedMs": 13,
+      "body": "{\"value\":{\"error\":\"unknown command\",\"message\":\"unknown command: Cannot call non W3C standard command while in W3C mode\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed23260e0 Status::Status()\\n#2 0x719ed23659a4 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#3 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#4 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#5 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#6 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#7 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#8 0x719ed2987118 base::RunLoop::Run()\\n#9 0x719ed29d80e0 base::Thread::Run()\\n#10 0x719ed29d82a8 base::Thread::ThreadMain()\\n#11 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#12 0x78074d4a39c8 start_thread\\n#13 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "unknown command: Cannot call non W3C standard command while in W3C mode"
+    },
+    {
+      "name": "element.body.attribute.class",
+      "at": "2026-10-11T14:29:13.503Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/attribute/class",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 9,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "element.body.displayed",
+      "at": "2026-10-11T14:29:13.512Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/displayed",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 9,
+      "body": "{\"value\":true}",
+      "ok": true
+    },
+    {
+      "name": "element.body.enabled",
+      "at": "2026-10-11T14:29:13.522Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.16/enabled",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 10,
+      "body": "{\"value\":true}",
+      "ok": true
+    },
+    {
+      "name": "elements.find.divs",
+      "at": "2026-10-11T14:29:13.533Z",
+      "request": {
+        "method": "POST",
+        "path": "/elements",
+        "body": {
+          "using": "css selector",
+          "value": "div"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 11,
+      "body": "{\"value\":[{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.17\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.18\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.19\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.9\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.10\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.11\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.12\"},{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.13\"}]}",
+      "ok": true
+    },
+    {
+      "name": "element.find.input",
+      "at": "2026-10-11T14:29:13.541Z",
+      "request": {
+        "method": "POST",
+        "path": "/element",
+        "body": {
+          "using": "css selector",
+          "value": "#wd-probe-input"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 8,
+      "body": "{\"value\":{\"element-6066-11e4-a52e-4f735466cecf\":\"f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14\"}}",
+      "ok": true
+    },
+    {
+      "name": "element.input.value",
+      "at": "2026-10-11T14:29:13.549Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14/value",
+        "body": null
+      },
+      "status": 404,
+      "elapsedMs": 7,
+      "body": "{\"value\":{\"error\":\"unknown command\",\"message\":\"unknown command: Cannot call non W3C standard command while in W3C mode\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed23260e0 Status::Status()\\n#2 0x719ed23659a4 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#3 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#4 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#5 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#6 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#7 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#8 0x719ed2987118 base::RunLoop::Run()\\n#9 0x719ed29d80e0 base::Thread::Run()\\n#10 0x719ed29d82a8 base::Thread::ThreadMain()\\n#11 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#12 0x78074d4a39c8 start_thread\\n#13 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "unknown command: Cannot call non W3C standard command while in W3C mode"
+    },
+    {
+      "name": "element.input.text",
+      "at": "2026-10-11T14:29:13.561Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14/text",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 11,
+      "body": "{\"value\":\"\"}",
+      "ok": true
+    },
+    {
+      "name": "element.input.property.value",
+      "at": "2026-10-11T14:29:13.567Z",
+      "request": {
+        "method": "GET",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14/property/value",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 6,
+      "body": "{\"value\":\"wd-probe-value\"}",
+      "ok": true
+    },
+    {
+      "name": "element.input.clear",
+      "at": "2026-10-11T14:29:13.596Z",
+      "request": {
+        "method": "POST",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14/clear",
+        "body": {}
+      },
+      "status": 200,
+      "elapsedMs": 29,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "element.input.send-keys",
+      "at": "2026-10-11T14:29:13.706Z",
+      "request": {
+        "method": "POST",
+        "path": "/element/f.CB2B252842EA97D2934E740F2D0FF7FE.d.259512C319F9A5CEDAD885D2FAC4EECC.e.14/value",
+        "body": {
+          "text": "wd-typed"
+        }
+      },
+      "status": 200,
+      "elapsedMs": 110,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "execute/sync.read-input-value",
+      "at": "2026-10-11T14:29:13.738Z",
+      "request": {
+        "method": "POST",
+        "path": "/execute/sync",
+        "body": {
+          "script": "return document.getElementById('wd-probe-input').value;",
+          "args": []
+        }
+      },
+      "status": 200,
+      "elapsedMs": 32,
+      "body": "{\"value\":\"wd-typed\"}",
+      "ok": true
+    },
+    {
+      "name": "screenshot",
+      "at": "2026-10-11T14:29:13.897Z",
+      "request": {
+        "method": "GET",
+        "path": "/screenshot",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 159,
+      "body": "{\"value\":\"iVBORw0KGgoAAAANSUhEUgAABP0AAAYaCAIAAAAgH4spAAAAA3NCSVQICAjb4U/gAAAAAXNSR0IArs4c6QAAIABJREFUeJzs3XdcE+cfB/An7L1BNqKAKENQERHcC8WtdWvdsz9HW7VqtdrW1aq1ttZKa+uuGxcKqLhx4gBREJEhIHvvEPL74+R6zV1CElnGz/vlH8nluece7pKY7z3P8314QqGQAAAAAAAAACgopaZuAAAAAAAAAEADQtwLAAAAAAAAigxxLwAAAAAAACgyxL0AAAAAAACgyBD3AgAAAAAAgCJD3AsAAAAAAACKDHEvAAAAAAAAKDLEvQAAAAAAAKDIEPcCAAAAAACAIkPcCwAAAAAAAIoMcS8AAAAAAAAoMsS9AAAAAAAAoMgQ9wIAAAAAAIAiQ9wLAAAAAAAAigxxLwAAAAAAACgyxL0AAAAAAACgyBD3AgAAAAAAgCJD3AsAAAAAAACKDHEvAAAAAAAAKDLEvQAAAAAAAKDIEPcCAAAAAACAIkPcCwAAAAAAAIoMcS8AAAAAAAAoMsS9AAAAAAAAoMgQ9wIAAAAAAIAiQ9wLAAAAAAAAigxxLwAAAAAAACgyxL0AAAAAAACgyBD3AgAAAAAAgCJD3AsAAAAAAACKDHEvAAAAAAAAKDLEvQAAAAAAAKDIEPcCAAAAAACAIkPcCwAAAAAAAIoMcS8AAAAAAAAoMsS9AAAAAAAAoMgQ9wIAAAAAAIAiQ9wLAAAAAAAAigxxLwAAAAAAACgyxL0AAAAAAACgyBD3AgAAAAAAgCJD3AsAAAAAAACKDHEvAAAAAAAAKDLEvQAAAAAAAKDIEPcCAAAAAACAIkPcCwAAAAAAAIoMcS8AAAAAAAAoMsS9AAAAAAAAoMgQ9wIAAAAAAIAiQ9wLAAAAAAAAigxxLwAAAAAAACgyxL0AAAAAAACgyBD3AgAAAAAAgCJD3AsAAAAAAACKDHEvAAAAAAAAKDLEvQAAAAAAAKDIEPcCAAAAAACAIkPcCwAAAAAAAIoMcS8AAAAAAAAoMsS9AAAAAAAAoMhUmroB0FBevXp19erVrKwsS0tLf39/CwuLpm4RfBjy8/ODg4NTUlIMDQ19fX3d3d2bukUK5ejRo/Hx8SIbvb29+/Xr1yTtAQAAAPgYIO5VTAsXLty5c2dNTQ31VE1Nbd26dV999VXTtgqav0OHDs2ZM6e0tJTeMnLkyCNHjqiqqjZhqxTJgQMHgoODRTYuWrQIcS8AAABAw+EJhcKmbsN/8Pn869ev11dt+vr6Xl5e9VXbh+LOnTtdu3YV2cjj8eLj41u3bi19PVVVVREREU+fPo2JicnMzCwuLi4rK9PS0tLV1W3RooWLi4u7u7uvr6+amlq9Nh+aTGVlpZmZWVFRkcj2PXv2TJ8+vUmapHgGDx7MGfdu3769SdoDAAAA8DFodv29hYWF9djv4e3tfffu3fqq7UPx4MED9kahUPjgwQMp49779+9v3749ODiYHQKJ0NPTGzx48OLFiz/C+wuKJy4ujvOK379/H3EvAAAAAHy4kNfqIyJN335KSkpAQIC3t/c///xTZ9BLCCkqKjp8+HDnzp2HDBmSmppaH82EZqe5jQoBAAAAAJAJ4l4FxNn1yuPxOnfuLHnHoKAgd3f3CxcuyHHQ8+fPu7u7nz9/Xvpddu7c2YXh9evXchwXxLlz5w7z9J44caLOXdq0aaOnp8fe3qVLlwZoIAAAAABAI2l245zh/fn4+CxcuPCXX36hu+lUVVW//fZbyYOc9+/fP336dIFAIPdx8/PzR4wYcejQoTFjxtRZWCgUbtu2jRnrlpWVyX1oYAsMDLx37x79NCMjo85d1NXVd+3aNWvWLOa1GDly5KRJkxqkiQAAAAAAjQJxr2L6+eefFyxYcPny5ezsbEtLy4CAAEtLSwnlw8PDp02bRud/llt1dfXEiRNtbW3r7CG8efMmOngbTllZmTQdvGwTJkzw9/c/e/…",
+      "ok": true
+    },
+    {
+      "name": "cookie.get.initial",
+      "at": "2026-10-11T14:29:13.904Z",
+      "request": {
+        "method": "GET",
+        "path": "/cookie",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 7,
+      "body": "{\"value\":[]}",
+      "ok": true
+    },
+    {
+      "name": "cookie.set",
+      "at": "2026-10-11T14:29:13.921Z",
+      "request": {
+        "method": "POST",
+        "path": "/cookie",
+        "body": {
+          "cookie": {
+            "name": "wd_probe",
+            "value": "1",
+            "domain": "tauri.localhost",
+            "path": "/"
+          }
+        }
+      },
+      "status": 400,
+      "elapsedMs": 17,
+      "body": "{\"value\":{\"error\":\"invalid cookie domain\",\"message\":\"invalid cookie domain\\n  (Session info: chrome=155.0.8059.39)\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed2325f7c Status::Status()\\n#2 0x719ed23c3e00 ExecuteAddCookie()\\n#3 0x719ed23b4120 ExecuteWindowCommand()\\n#4 0x719ed2365a78 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#5 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#6 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#7 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#8 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#9 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#10 0x719ed2987118 base::RunLoop::Run()\\n#11 0x719ed29d80e0 base::Thread::Run()\\n#12 0x719ed29d82a8 base::Thread::ThreadMain()\\n#13 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#14 0x78074d4a39c8 start_thread\\n#15 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "invalid cookie domain\n  (Session info: chrome=155.0.8059.39)"
+    },
+    {
+      "name": "cookie.set.nodomain",
+      "at": "2026-10-11T14:29:13.937Z",
+      "request": {
+        "method": "POST",
+        "path": "/cookie",
+        "body": {
+          "cookie": {
+            "name": "wd_probe",
+            "value": "1"
+          }
+        }
+      },
+      "status": 400,
+      "elapsedMs": 16,
+      "body": "{\"value\":{\"error\":\"invalid cookie domain\",\"message\":\"invalid cookie domain\\n  (Session info: chrome=155.0.8059.39)\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed2325f7c Status::Status()\\n#2 0x719ed23c3e00 ExecuteAddCookie()\\n#3 0x719ed23b4120 ExecuteWindowCommand()\\n#4 0x719ed2365a78 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#5 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#6 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#7 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#8 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#9 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#10 0x719ed2987118 base::RunLoop::Run()\\n#11 0x719ed29d80e0 base::Thread::Run()\\n#12 0x719ed29d82a8 base::Thread::ThreadMain()\\n#13 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#14 0x78074d4a39c8 start_thread\\n#15 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "invalid cookie domain\n  (Session info: chrome=155.0.8059.39)"
+    },
+    {
+      "name": "cookie.get.after",
+      "at": "2026-10-11T14:29:13.943Z",
+      "request": {
+        "method": "GET",
+        "path": "/cookie",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 6,
+      "body": "{\"value\":[]}",
+      "ok": true
+    },
+    {
+      "name": "window.rect.get",
+      "at": "2026-10-11T14:29:13.958Z",
+      "request": {
+        "method": "GET",
+        "path": "/window/rect",
+        "body": null
+      },
+      "status": 404,
+      "elapsedMs": 15,
+      "body": "{\"value\":{\"error\":\"unknown command\",\"message\":\"unknown command: 'Browser.getWindowForTarget' wasn't found\\n  (Session info: chrome=155.0.8059.39)\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed23260e0 Status::Status()\\n#2 0x719ed230f3f4 internal::ParseInspectorError()\\n#3 0x719ed230e248 DevToolsClientImpl::SendCommandInternal()\\n#4 0x719ed230e4b8 DevToolsClientImpl::SendCommandAndGetResultWithTimeout()\\n#5 0x719ed23005ec ChromeImpl::GetWindow()\\n#6 0x719ed2300914 ChromeImpl::GetWindowRect()\\n#7 0x719ed23c5c8c ExecuteGetWindowRect()\\n#8 0x719ed23b4120 ExecuteWindowCommand()\\n#9 0x719ed2365a78 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#10 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#11 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#12 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#13 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#14 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#15 0x719ed2987118 base::RunLoop::Run()\\n#16 0x719ed29d80e0 base::Thread::Run()\\n#17 0x719ed29d82a8 base::Thread::ThreadMain()\\n#18 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#19 0x78074d4a39c8 start_thread\\n#20 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "unknown command: 'Browser.getWindowForTarget' wasn't found\n  (Session info: chrome=155.0.8059.39)"
+    },
+    {
+      "name": "window.rect.set",
+      "at": "2026-10-11T14:29:13.969Z",
+      "request": {
+        "method": "POST",
+        "path": "/window/rect",
+        "body": {
+          "width": 900,
+          "height": 700
+        }
+      },
+      "status": 404,
+      "elapsedMs": 11,
+      "body": "{\"value\":{\"error\":\"unknown command\",\"message\":\"unknown command: 'Browser.getWindowForTarget' wasn't found\\n  (Session info: chrome=155.0.8059.39)\",\"stacktrace\":\"#0 0x719ed29ee2fc base::debug::StackTrace::StackTrace()\\n#1 0x719ed23260e0 Status::Status()\\n#2 0x719ed230f3f4 internal::ParseInspectorError()\\n#3 0x719ed230e248 DevToolsClientImpl::SendCommandInternal()\\n#4 0x719ed230e4b8 DevToolsClientImpl::SendCommandAndGetResultWithTimeout()\\n#5 0x719ed23005ec ChromeImpl::GetWindow()\\n#6 0x719ed23028a8 ChromeImpl::SetWindowRect()\\n#7 0x719ed23c6068 ExecuteSetWindowRect()\\n#8 0x719ed23b4120 ExecuteWindowCommand()\\n#9 0x719ed2365a78 (anonymous namespace)::ExecuteSessionCommandOnSessionThread()\\n#10 0x719ed29afca0 base::TaskAnnotator::RunTaskImpl()\\n#11 0x719ed29ae7f8 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWorkImpl()\\n#12 0x719ed29ae2e4 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::DoWork()\\n#13 0x719ed299dd98 base::MessagePumpDefault::Run()\\n#14 0x719ed29aef30 base::sequence_manager::internal::ThreadControllerWithMessagePumpImpl::Run()\\n#15 0x719ed2987118 base::RunLoop::Run()\\n#16 0x719ed29d80e0 base::Thread::Run()\\n#17 0x719ed29d82a8 base::Thread::ThreadMain()\\n#18 0x719ed29ecba8 base::(anonymous namespace)::ThreadFunc()\\n#19 0x78074d4a39c8 start_thread\\n#20 0x78074d516a18 thread_start\\n\"}}",
+      "ok": false,
+      "error": "unknown command: 'Browser.getWindowForTarget' wasn't found\n  (Session info: chrome=155.0.8059.39)"
+    },
+    {
+      "name": "timeouts.get",
+      "at": "2026-10-11T14:29:13.971Z",
+      "request": {
+        "method": "GET",
+        "path": "/timeouts",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 2,
+      "body": "{\"value\":{\"implicit\":0,\"pageLoad\":300000,\"script\":30000}}",
+      "ok": true
+    },
+    {
+      "name": "timeouts.set",
+      "at": "2026-10-11T14:29:13.974Z",
+      "request": {
+        "method": "POST",
+        "path": "/timeouts",
+        "body": {
+          "script": 30000,
+          "pageLoad": 30000,
+          "implicit": 0
+        }
+      },
+      "status": 200,
+      "elapsedMs": 3,
+      "body": "{\"value\":null}",
+      "ok": true
+    },
+    {
+      "name": "window.handles",
+      "at": "2026-10-11T14:29:13.976Z",
+      "request": {
+        "method": "GET",
+        "path": "/window/handles",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 2,
+      "body": "{\"value\":[\"CB2B252842EA97D2934E740F2D0FF7FE\"]}",
+      "ok": true
+    },
+    {
+      "name": "close-session",
+      "at": "2026-10-11T14:29:13.980Z",
+      "request": {
+        "method": "DELETE",
+        "path": "",
+        "body": null
+      },
+      "status": 200,
+      "elapsedMs": 4,
+      "body": "{\"value\":null}",
+      "ok": true
+    }
+  ],
+  "screenshot": {
+    "file": "/home/alper/.omp/wt/t3df0caf14/m/tools/webdriver-probe/probe-out-fixup-spoofed/screenshot.png",
+    "bytes": 214731,
+    "isPng": true,
+    "width": 1277,
+    "height": 1562
+  },
+  "verdict": "attach works",
+  "cdpCommands": {
+    "Page.getFrameTree": 122,
+    "Runtime.evaluate": 78,
+    "Runtime.callFunctionOn": 61,
+    "Runtime.releaseObjectGroup": 42,
+    "DOM.resolveNode": 41,
+    "Input.dispatchKeyEvent": 24,
+    "Input.dispatchMouseEvent": 6,
+    "Target.getTargets": 2,
+    "Target.setAutoAttach": 2,
+    "Runtime.enable": 2,
+    "Network.getCookies": 2,
+    "Browser.getWindowForTarget": 2,
+    "Target.attachToTarget": 1,
+    "Page.enable": 1,
+    "Page.addScriptToEvaluateOnNewDocument": 1,
+    "Log.enable": 1,
+    "DOM.describeNode": 1,
+    "Page.navigate": 1,
+    "Target.activateTarget": 1,
+    "Page.captureScreenshot": 1
+  },
+  "cdpFailures": [
+    {
+      "method": "Browser.getWindowForTarget",
+      "code": -32601,
+      "message": "'Browser.getWindowForTarget' wasn't found"
+    }
+  ],
+  "driverRefusals": [
+    {
+      "command": "GetElementValue",
+      "error": "unknown command: Cannot call non W3C standard command while in W3C mode"
+    },
+    {
+      "command": "AddCookie",
+      "error": "invalid cookie domain"
+    },
+    {
+      "command": "GetWindowRect",
+      "error": "unknown command: 'Browser.getWindowForTarget' wasn't found"
+    },
+    {
+      "command": "SetWindowRect",
+      "error": "unknown command: 'Browser.getWindowForTarget' wasn't found"
+    }
+  ],
+  "fixup": {
+    "enabled": true,
+    "version": "Chrome/155.0.8059.39",
+    "address": "127.0.0.1:9224",
+    "target": "127.0.0.1:9223",
+    "jsonVersion": {
+      "Browser": "Chrome/155.0.8059.39",
+      "Protocol-Version": "1.3",
+      "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+      "V8-Version": "14.0.365.10",
+      "WebKit-Version": "537.36 (@0000000000000000000000000000000000000000)",
+      "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/browser/8ae030ad-7f16-4d15-a313-2ca6c0221c38"
+    },
+    "observedRequests": [
+      {
+        "method": "GET",
+        "url": "/json/version"
+      },
+      {
+        "method": "GET",
+        "url": "/json/version"
+      },
+      {
+        "method": "GET",
+        "url": "/json/list"
+      }
+    ]
+  }
+}

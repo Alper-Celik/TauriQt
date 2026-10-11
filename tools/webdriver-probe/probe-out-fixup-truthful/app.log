@@ -1,0 +1,56 @@
+fetching git input 'git+file:///home/alper/.omp/wt/t3df0caf14/m'
+[tauri-runtime-qt] run: emitting Ready
+[tauri-runtime-qt] window 'main' created (native 1)
+MESA: error: Opening /dev/dri/card2 failed: Permission denied
+[43523:43537:1011/172906.230378:ERROR:../../../src/3rdparty/chromium/dbus/bus.cc:408] Failed to connect to the bus: Failed to connect to socket /run/firejail/mnt/dbus/system: Permission denied
+
+DevTools listening on ws://127.0.0.1:9223/devtools/browser/308d25de-7b6d-4e20-bb6f-9c98c3bef0c4
+MESA: error: Opening /dev/dri/card2 failed: Permission denied
+[tauri-runtime-qt] webview 'main' created in window 1 (native 1), url tauri://localhost
+[tauri-runtime-qt] run: entering Qt event loop
+[tauri-runtime-qt] webview 1 event 1: 
+[tauri-runtime-qt] scheme_request webview=1 kind=1 GET tauri://localhost/
+[tauri-runtime-qt] tauri GET tauri://localhost/ -> 200 (4256 body bytes)
+[tauri-runtime-qt] webview 1 event 3: tauri://localhost/
+[tauri-runtime-qt] webview 1 event 4: tauri://localhost
+[tauri-runtime-qt] webview 1 event 4: TauriQt — runtime demo
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/greet
+[tauri-runtime-qt] ipc POST ipc://localhost/greet -> 200 (27 body bytes)
+[tauri-runtime-qt] webview 1 event 2: tauri://localhost/
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] greet: Hello, Qt! — from linux
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/win_info
+[tauri-runtime-qt] ipc POST ipc://localhost/win_info -> 200 (337 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] win_info: inner_size=1277x1562; outer_size=1277x1562; inner_position=0,0; outer_position=0,0; scale_factor=1.5000; title=TauriQt; is_fullscreen=false; is_minimized=false; is_maximized=false; is_focused=true; is_decorated=true; is_resizable=true; is_visible=true; is_always_on_top=false; is_maximizable=true; is_minimizable=true; is_closable=true
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/monitors
+[tauri-runtime-qt] ipc POST ipc://localhost/monitors -> 200 (283 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] monitors: available_monitors=1 | #0 name=Some("eDP-1") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; primary_monitor=#0 name=Some("eDP-1") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000; current_monitor=#0 name=Some("eDP-1") pos=0,0 size=2561x1601 work=2561x1601 scale=1.5000
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/set_title
+[tauri-runtime-qt] ipc POST ipc://localhost/set_title -> 200 (42 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] set_title: set_title("TauriQt — demo title")=OK
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/set_fullscreen
+[tauri-runtime-qt] ipc POST ipc://localhost/set_fullscreen -> 200 (25 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] fullscreen_on: set_fullscreen(true)=OK
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/win_info
+[tauri-runtime-qt] ipc POST ipc://localhost/win_info -> 200 (351 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] win_info_after_fullscreen: inner_size=2561x1601; outer_size=2561x1601; inner_position=0,0; outer_position=0,0; scale_factor=1.5000; title=TauriQt — demo title; is_fullscreen=true; is_minimized=false; is_maximized=false; is_focused=true; is_decorated=true; is_resizable=true; is_visible=true; is_always_on_top=false; is_maximizable=true; is_minimizable=true; is_closable=true
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/set_fullscreen
+[tauri-runtime-qt] ipc POST ipc://localhost/set_fullscreen -> 200 (26 body bytes)
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] fullscreen_off: set_fullscreen(false)=OK
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)
+[tauri-runtime-qt] webview 1 event 4: DEMO_OK
+[tauri-runtime-qt] scheme_request webview=1 kind=0 POST ipc://localhost/report
+[tauriqt-demo] title=DEMO_OK
+[tauri-runtime-qt] ipc POST ipc://localhost/report -> 200 (10 body bytes)

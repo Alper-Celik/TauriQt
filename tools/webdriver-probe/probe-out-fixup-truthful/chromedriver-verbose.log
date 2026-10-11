@@ -1,0 +1,27 @@
+[1791728946.777][INFO]: Starting ChromeDriver 155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0}) on port 4444
+[1791728946.777][INFO]: Please see https://chromedriver.chromium.org/security-considerations for suggestions on keeping ChromeDriver safe.
+[1791728946.782][INFO]: ChromeDriver was started successfully on port 4444
+[1791728947.035][INFO]: [c2335414bff7b284c89f067841ae110a] COMMAND InitSession {
+   "capabilities": {
+      "alwaysMatch": {
+         "browserName": "chrome",
+         "goog:chromeOptions": {
+            "debuggerAddress": "127.0.0.1:9224"
+         }
+      }
+   }
+}
+[1791728947.036][DEBUG]: DevTools HTTP Request: http://127.0.0.1:9224/json/version
+[1791728947.040][DEBUG]: DevTools HTTP Response: {
+   "Browser": "Chrome/140.0.7339.207",
+   "Protocol-Version": "1.3",
+   "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+   "V8-Version": "14.0.365.10",
+   "WebKit-Version": "537.36 (@0000000000000000000000000000000000000000)",
+   "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/browser/308d25de-7b6d-4e20-bb6f-9c98c3bef0c4"
+}
+[1791728947.049][INFO]: [c2335414bff7b284c89f067841ae110a] RESPONSE InitSession ERROR session not created: cannot connect to chrome at 127.0.0.1:9224
+from session not created: This version of ChromeDriver only supports Chrome version 155
+Current browser version is 140.0.7339.207
+[1791728947.049][DEBUG]: Log type 'driver' lost 0 entries on destruction
+[1791728947.049][DEBUG]: Log type 'browser' lost 0 entries on destruction

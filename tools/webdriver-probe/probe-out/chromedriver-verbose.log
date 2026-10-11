@@ -1,0 +1,27 @@
+[1791728939.843][INFO]: Starting ChromeDriver 155.0.8059.39 (3ff7ac5a9224be9156d7f8703a06e22890aafd34-refs/tags/155.0.8059.39@{#0}) on port 4444
+[1791728939.843][INFO]: Please see https://chromedriver.chromium.org/security-considerations for suggestions on keeping ChromeDriver safe.
+[1791728939.845][INFO]: ChromeDriver was started successfully on port 4444
+[1791728940.100][INFO]: [b87d0a82b0d534e83d90ccb95c74e7c1] COMMAND InitSession {
+   "capabilities": {
+      "alwaysMatch": {
+         "browserName": "chrome",
+         "goog:chromeOptions": {
+            "debuggerAddress": "127.0.0.1:9223"
+         }
+      }
+   }
+}
+[1791728940.100][DEBUG]: DevTools HTTP Request: http://127.0.0.1:9223/json/version
+[1791728940.104][DEBUG]: DevTools HTTP Response: {
+   "Browser": "tauri-runtime-qt/",
+   "Protocol-Version": "1.3",
+   "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+   "V8-Version": "14.0.365.10",
+   "WebKit-Version": "537.36 (@0000000000000000000000000000000000000000)",
+   "webSocketDebuggerUrl": "ws://127.0.0.1:9223/devtools/browser/de5dd5c1-181e-4220-9d6f-5f2fca8f40df"
+}
+
+[1791728940.111][INFO]: [b87d0a82b0d534e83d90ccb95c74e7c1] RESPONSE InitSession ERROR session not created: cannot connect to chrome at 127.0.0.1:9223
+from unknown error: unrecognized Chrome version: tauri-runtime-qt/
+[1791728940.111][DEBUG]: Log type 'driver' lost 0 entries on destruction
+[1791728940.111][DEBUG]: Log type 'browser' lost 0 entries on destruction
