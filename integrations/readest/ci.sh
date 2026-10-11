@@ -53,6 +53,9 @@ cleanup() {
   pkill -f 'target/debug/Readest' 2>/dev/null || true
   pkill -f 'next-server' 2>/dev/null || true
   pkill -f 'next dev' 2>/dev/null || true
+  # Next's dev pipeline on this app also spawns a workerd proxy; it holds :3000
+  # after the node processes are gone.
+  pkill -f 'workerd' 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
