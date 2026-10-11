@@ -11,4 +11,5 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets WebEngineWidgets)
 qt_standard_project_setup()
 
 add_executable(tauriqt src/main.cpp)
+install(TARGETS tauriqt RUNTIME DESTINATION bin)
 target_link_libraries(tauriqt PRIVATE Qt6::Widgets Qt6::WebEngineWidgets)
