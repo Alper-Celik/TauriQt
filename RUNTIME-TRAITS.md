@@ -34,9 +34,9 @@ Qt-side call.
 | `primary_monitor` / `monitor_from_point` / `available_monitors` | `QScreen` list (returns `Option`, not `Result`) | ✅ |
 | `cursor_position()` | `QCursor::pos()` | 🔶 |
 | `set_theme(Option<Theme>)` | `QApplication::setPalette` / style hints | 🔶 |
-| `set_activation_policy` / `set_activate_ignoring_other_apps` / `set_dock_visibility` | macOS-only → no-op Ok | ⛔ (harmless) |
-| `show` / `hide` (app-level) | `QApplication::setQuitOnLastWindowClosed` semantics; MVP: no-op | ⛔ |
-| `set_device_event_filter` | no-op (Qt doesn't expose raw device events) | ⛔ |
+| `set_activation_policy` / `set_activate_ignoring_other_apps` / `set_dock_visibility` | macOS-only trait methods — **absent from the impl on Linux**, not stubbed | — |
+| `show` / `hide` (app-level) | app-level `show`/`hide` are not part of the trait on Linux; the window- and webview-level ones are implemented and exercised by the demo | — |
+| `set_device_event_filter` | a no-op that returns `()` — Qt does not expose raw device events | ✅ (nothing to fail) |
 
 ## 2. `RuntimeHandle<T>` — 21 methods (required: all)
 
@@ -68,7 +68,7 @@ invocation). MVP mapping:
 | `url()` | `QWebEnginePage::url()` | ✅ |
 | `bounds` / `position` / `size` / `set_bounds` / `set_size` / `set_position` | view widget geometry, logical→physical scale | ✅ |
 | `navigate(Url)` / `reload()` / `close()` | `load(QUrl)`, `reload()`, delete view + unregister | ✅ |
-| `print()` | `QWebEngineView::page()->printToPdf`? No — `page()->action(Print)`… MVP ⛔ if Qt6 lacks direct API (verify) | ⛔ |
+| `print()` | implemented on the Qt side as wry's behaviour: `QPrinter` + `QPrintDialog`, printing the page on accept (`qt_webview.cpp`), i.e. it needs user interaction, which is why no harness calls it | ✅ |
 | `set_focus()` / `show()` / `hide()` | widget API | ✅ |
 | `eval_script` | `page()->runJavaScript(js)` | ✅ |
 | `eval_script_with_callback` | `runJavaScript(js, QWebEngineCallback)` → bridge callback to Rust thread | ✅ (async note below) |
