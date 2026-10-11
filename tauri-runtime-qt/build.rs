@@ -49,7 +49,18 @@ fn collect(dir: &PathBuf, out: &mut Vec<PathBuf>, keep: impl Fn(&PathBuf) -> boo
     }
 }
 
+/// Whether this build was asked for coverage instrumentation (`TAURIQT_COVERAGE`
+/// set to anything but `0`), see `main`.
+fn coverage_enabled() -> bool {
+    std::env::var_os("TAURIQT_COVERAGE").is_some_and(|value| value != "0")
+}
+
 fn main() {
+    // Coverage is opt-in per build (scripts/coverage.sh sets this, and cargo
+    // must re-run *this* script when the flag appears or disappears, or the
+    // C++ objects in OUT_DIR would keep the previous instrumentation).
+    println!("cargo::rerun-if-env-changed=TAURIQT_COVERAGE");
+
     let qt = QtBuild::new(vec!["Widgets".to_owned(), "WebEngineWidgets".to_owned()])
         .expect("failed to locate a usable Qt installation (is QMAKE set?)");
 
@@ -66,6 +77,28 @@ fn main() {
         .include("src")
         .includes(qt.include_paths())
         .std("c++17");
+
+    // `TAURIQT_COVERAGE=1`: instrument the C++ translation units with clang's
+    // source-based coverage so they land in the same profile as the Rust half
+    // (rustc's `-Cinstrument-coverage`, set by scripts/coverage.sh). Compile
+    // flags only: the LLVM profile runtime is linked once, by rustc, so the
+    // C++ objects resolve `__llvm_profile_*` against it and both languages
+    // share `LLVM_PROFILE_FILE`. The define gates the profile-flush signal
+    // handler in qt_runtime.cpp to builds where that runtime exists.
+    //
+    // The flags are clang's alone — gcc rejects them — and a dev shell may well
+    // set `CXX=g++` (nixpkgs does), so pick a clang++ explicitly rather than
+    // inheriting a toolchain that cannot honour the flag.
+    if coverage_enabled() {
+        let cxx = std::env::var_os("CXX")
+            .filter(|cxx| cxx.to_string_lossy().contains("clang"))
+            .unwrap_or_else(|| "clang++".into());
+        build
+            .compiler(cxx)
+            .flag("-fprofile-instr-generate")
+            .flag("-fcoverage-mapping")
+            .define("TAURIQT_COVERAGE", "1");
+    }
     qt.cargo_link_libraries(&mut build);
     build.compile("tauri-runtime-qt-bridge");
 

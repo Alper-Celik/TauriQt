@@ -4,5 +4,6 @@ result
 .cache/
 compile_commands.json
 /target
+coverage/
 tauriqt/gen/
 integrations/readest/checkout/

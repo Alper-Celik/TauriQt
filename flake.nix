@@ -278,12 +278,29 @@
         };
 
         # Harness shell: everything the Wayland/X11 test harness drives, plus the
-        # default shell's cargo/qmake/merged-Qt toolchain (via inputsFrom). All of
-        # it is Nix-provided; a CI runner contributes nothing but Nix itself.
+        # default shell's cargo/qmake/merged-Qt toolchain (via inputsFrom). All
+        # of it is Nix-provided; a CI runner contributes nothing but Nix itself.
+        #
+        # Coverage (`just coverage`, scripts/coverage.sh): clang for the C++
+        # instrumentation, the matching LLVM tools for llvm-profdata/llvm-cov
+        # (rustc 1.98 links LLVM 21.1.8, the same version this attribute
+        # provides — `LLVM_COV`/`LLVM_PROFDATA` just spare cargo-llvm-cov a
+        # search; scripts/coverage.sh uses its own PATH first), lcov's genhtml
+        # for the Nix-native HTML, and the dotnet SDK so the ReportGenerator
+        # global tool (.config/dotnet-tools.json, the ProjectRead.ing shape) can
+        # be restored and run.
         ci = pkgs.mkShell {
           QMAKE = "${qmakeMerged pkgs}/bin/qmake";
           inputsFrom = [ default ];
-          packages = [ pkgs.clang ] ++ harnessPackages pkgs;
+          packages = [
+            pkgs.clang
+            pkgs.llvmPackages.llvm
+            pkgs.lcov
+            pkgs.dotnet-sdk
+            pkgs.cargo-llvm-cov
+          ] ++ harnessPackages pkgs;
+          LLVM_COV = "${pkgs.llvmPackages.llvm}/bin/llvm-cov";
+          LLVM_PROFDATA = "${pkgs.llvmPackages.llvm}/bin/llvm-profdata";
         };
       });
 

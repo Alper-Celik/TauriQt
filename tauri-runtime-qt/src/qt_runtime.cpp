@@ -27,8 +27,10 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QWidget>
 
+#include <csignal>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <memory>
 
 namespace {
@@ -50,12 +52,99 @@ QCoreApplication* application() {
     return QCoreApplication::instance();
 }
 
+#ifdef TAURIQT_COVERAGE
+// Provided by the LLVM profile runtime rustc links for `-Cinstrument-coverage`
+// — the same runtime instance the clang-instrumented C++ translation units
+// resolve against (see build.rs), so one call flushes Rust and C++ alike.
+// Declared by hand: compiler-rt's InstrProfiling.h is not on the include path
+// of an ordinary Qt build.
+extern "C" int __llvm_profile_write_file(void);
+
+/// Flushes every instrumented translation unit and then dies of the signal with
+/// its default disposition, so the exit status still says "killed".
+///
+/// Coverage runs are harness-driven: the harness stops the app (or the session
+/// it lives in) the moment it sees its verdict, and a signal taking the default
+/// action would skip the atexit hook the profile runtime installs, losing
+/// everything the run accumulated. Every signal that can end such a run is
+/// therefore armed with this flush: `SIGTERM`/`SIGINT` for an explicit stop,
+/// `SIGHUP`/`SIGQUIT`/`SIGPIPE` for a dying compositor or display connection,
+/// `SIGABRT` for a `qFatal()` in Qt. Coverage builds only.
+void flushProfilesAndReraise(int signal_number) {
+    std::fprintf(stderr, "[tauri-runtime-qt] coverage: flushing the profile (signal %d)\n",
+                 signal_number);
+    (void)__llvm_profile_write_file();
+    std::signal(signal_number, SIG_DFL);
+    std::raise(signal_number);
+}
+#endif
+
+/// `TAURIQT_EXIT_AFTER_MS=<n>`: leave the event loop through
+/// `QCoreApplication::exit(0)` n milliseconds after the pump starts, so a
+/// harness-driven run ends by itself and the profile runtime's atexit flush
+/// gets to run (`timeout`-killing the app would discard the profile). In a
+/// coverage build, arm the profile-flushing signal handlers as well. GUI thread
+/// only; unset or unparsable value: no timer, no handlers.
+void installExitHooks(QCoreApplication* app) {
+    const QByteArray value = qgetenv("TAURIQT_EXIT_AFTER_MS");
+    if (!value.isEmpty()) {
+        bool parsed = false;
+        const int after_ms = value.toInt(&parsed);
+        if (parsed && after_ms > 0) {
+            QTimer::singleShot(after_ms, app, []() {
+                std::fprintf(stderr,
+                             "[tauri-runtime-qt] exit-after-ms: leaving the event loop\n");
+                QCoreApplication::exit(0);
+            });
+        }
+    }
+#ifdef TAURIQT_COVERAGE
+    const int flush_signals[] = {SIGTERM, SIGINT, SIGHUP, SIGQUIT, SIGABRT, SIGPIPE};
+    for (const int signal_number : flush_signals) {
+        std::signal(signal_number, flushProfilesAndReraise);
+    }
+#endif
+}
+
+#ifdef TAURIQT_COVERAGE
+/// Default period of the dump installed by `installPeriodicFlush`.
+constexpr int kProfileFlushMs = 1000;
+
+/// Dumps the profile of the running process every `TAURIQT_PROFILE_FLUSH_MS`
+/// (default `kProfileFlushMs`, `0` disables it).
+///
+/// Not every run ends where it should: a harness can stop the app's session
+/// under it, and a process killed with `SIGKILL` — or reached before one of the
+/// handlers above — never runs the atexit hook the profile runtime installs, so
+/// nothing would be written at all. The dump is cumulative and merges into
+/// `LLVM_PROFILE_FILE`, so the last dump before the kill is what gets reported;
+/// the interval therefore bounds how much of a killed run can be missing.
+/// GUI thread only (called from `installPumpTimer`).
+void installPeriodicFlush(QCoreApplication* app) {
+    const QByteArray value = qgetenv("TAURIQT_PROFILE_FLUSH_MS");
+    bool parsed = false;
+    const int interval_ms = value.isEmpty() ? kProfileFlushMs : value.toInt(&parsed);
+    if ((!value.isEmpty() && !parsed) || interval_ms <= 0) {
+        return;
+    }
+    auto* timer = new QTimer(app);
+    timer->setTimerType(Qt::CoarseTimer);
+    timer->setInterval(interval_ms);
+    QObject::connect(timer, &QTimer::timeout, app, []() { (void)__llvm_profile_write_file(); });
+    timer->start();
+}
+#endif
+
 /// Installs the drain timer; GUI thread only.
 void installPumpTimer() {
     QCoreApplication* app = application();
     if (app == nullptr || !g_pumpTimer.isNull()) {
         return;
     }
+    installExitHooks(app);
+#ifdef TAURIQT_COVERAGE
+    installPeriodicFlush(app);
+#endif
     auto* timer = new QTimer(app);
     timer->setTimerType(Qt::CoarseTimer);
     timer->setInterval(kPumpIntervalMs);

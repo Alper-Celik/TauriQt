@@ -72,6 +72,17 @@ test-webdriver:
 [parallel]
 test: test-smoke test-wayland test-oracle
 
+# ---------------------------------------------------------------- coverage ----
+
+# merged llvm coverage (Rust + C++) through the harnesses: instrumented build,
+# lcov.info, coverage/html (genhtml) and coverage/report (ReportGenerator)
+coverage:
+    nix develop .#ci -c scripts/coverage.sh
+
+# re-render the HTML reports from the existing lcov.info (no build, no run)
+coverage-html:
+    nix develop .#ci -c scripts/coverage.sh --no-build --no-run
+
 # ------------------------------------------------------------ flake checks ----
 
 # run one flake check by name (smoke | wayland-smoke | sway-oracle)
