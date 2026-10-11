@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+#
+# End-to-end smoke test for the Qt runtime: builds the sample app, runs it with
+# a timeout, and asserts on the runtime's trace lines. Deliberately engine-level
+# (no CDP/WebDriver needed) so it works anywhere the app can start — it is the
+# safety net under the heavier harnesses (Playwright/WebDriver).
+#
+# Usage:
+#   scripts/smoke.sh                      # build + run + assert
+#   SMOKE_EXPECT=DEMO_OK scripts/smoke.sh # require the fully-implemented demo
+#   SMOKE_SKIP_BUILD=1 scripts/smoke.sh   # reuse the existing binary
+#
+# Exit code 0 only if every expectation matched.
+
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+TIMEOUT="${SMOKE_TIMEOUT:-30}"
+EXPECT="${SMOKE_EXPECT:-DEMO_OK}"
+LOG="$(mktemp -t tauriqt-smoke.XXXXXX.log)"
+trap 'rm -f "$LOG"' EXIT
+
+if [[ "${SMOKE_SKIP_BUILD:-0}" != "1" ]]; then
+  echo "==> building tauriqt"
+  LD_LIBRARY_PATH= nix develop -c sh -c 'QMAKE=$(which qmake); cargo build -p tauriqt' >/dev/null
+fi
+
+echo "==> running for ${TIMEOUT}s (log: $LOG)"
+# `--no-sandbox` is required inside the agent firejail; harmless on a real desktop.
+LD_LIBRARY_PATH= nix develop -c sh -c \
+  "QTWEBENGINE_CHROMIUM_FLAGS=\"--no-sandbox\" timeout ${TIMEOUT} ./target/debug/tauriqt" \
+  >"$LOG" 2>&1 || true
+
+failures=0
+expect() {
+  local pattern="$1"
+  if grep -qF -- "$pattern" "$LOG"; then
+    echo "  ok   : $pattern"
+  else
+    echo "  FAIL : $pattern"
+    failures=$((failures + 1))
+  fi
+}
+
+echo "==> expectations"
+expect "[tauri-runtime-qt] run: emitting Ready"
+expect "] window 'main' created"
+expect "] webview 'main' created"
+expect "tauri GET tauri://localhost/ -> 200"
+expect "ipc POST ipc://localhost/greet -> 200"
+expect "$EXPECT"
+
+# A `DEMO_PARTIAL` title, or any unimplemented path being hit, must fail the run
+# even when the requested expectation matched.
+expect_absent() {
+  local pattern="$1"
+  if grep -qF -- "$pattern" "$LOG"; then
+    echo "  FAIL : must not appear: $pattern"
+    failures=$((failures + 1))
+  else
+    echo "  ok   : absent: $pattern"
+  fi
+}
+expect_absent "DEMO_PARTIAL"
+expect_absent "is not implemented yet"
+
+if [[ "$failures" -gt 0 ]]; then
+  echo "==> ${failures} expectation(s) failed; last 40 log lines:"
+  tail -40 "$LOG"
+  exit 1
+fi
+
+echo "==> smoke test passed"
