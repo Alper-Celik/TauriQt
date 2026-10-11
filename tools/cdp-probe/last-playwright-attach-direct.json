@@ -1,0 +1,13 @@
+{
+  "endpoint": "http://127.0.0.1:9334",
+  "playwrightVersion": null,
+  "startedAt": "2026-10-11T14:33:23.206Z",
+  "steps": [],
+  "attached": false,
+  "error": {
+    "name": "Error",
+    "message": "browserType.connectOverCDP: Protocol error (Browser.setDownloadBehavior): Browser context management is not supported.\nCall log:\n  - <ws preparing> retrieving websocket url from http://127.0.0.1:9334\n  - <ws connecting> ws://127.0.0.1:9334/devtools/browser/71d71e4d-a467-4519-bd5b-1856a8f2fc03\n  - <ws connected> ws://127.0.0.1:9334/devtools/browser/71d71e4d-a467-4519-bd5b-1856a8f2fc03\n  - <ws disconnecting> ws://127.0.0.1:9334/devtools/browser/71d71e4d-a467-4519-bd5b-1856a8f2fc03\n  - <ws disconnected> ws://127.0.0.1:9334/devtools/browser/71d71e4d-a467-4519-bd5b-1856a8f2fc03 code=1000 reason=\n"
+  },
+  "durationMs": 27,
+  "finishedAt": "2026-10-11T14:33:23.233Z"
+}

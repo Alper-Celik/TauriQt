@@ -1,0 +1,3067 @@
+{
+  "probe": {
+    "tool": "tools/cdp-probe/probe.mjs",
+    "schemaVersion": 1,
+    "startedAt": "2026-10-11T14:38:32.572Z",
+    "finishedAt": "2026-10-11T14:38:50.510Z",
+    "node": "v24.21.0",
+    "host": "127.0.0.1",
+    "port": 9334,
+    "defaultTimeoutMs": 5000,
+    "targetSelection": "first page target (prefers tauri:// URL)",
+    "target": {
+      "id": "62333976D22645C15DFC92F6D6CFA479",
+      "type": "page",
+      "url": "tauri://localhost/",
+      "title": "TauriQt — runtime demo",
+      "wsUrl": "ws://127.0.0.1:9334/devtools/page/62333976D22645C15DFC92F6D6CFA479"
+    },
+    "wsClosed": {
+      "code": 1006,
+      "reason": ""
+    }
+  },
+  "http": {
+    "version": {
+      "path": "/json/version",
+      "status": 200,
+      "body": {
+        "Browser": "tauri-runtime-qt/",
+        "Protocol-Version": "1.3",
+        "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+        "V8-Version": "14.0.365.10",
+        "WebKit-Version": "537.36 (@0000000000000000000000000000000000000000)",
+        "webSocketDebuggerUrl": "ws://127.0.0.1:9334/devtools/browser/71d71e4d-a467-4519-bd5b-1856a8f2fc03"
+      },
+      "parseError": null
+    },
+    "list": {
+      "path": "/json/list",
+      "status": 200,
+      "body": [
+        {
+          "description": "",
+          "devtoolsFrontendUrl": "/devtools/inspector.html?ws=127.0.0.1:9334/devtools/page/62333976D22645C15DFC92F6D6CFA479",
+          "id": "62333976D22645C15DFC92F6D6CFA479",
+          "title": "TauriQt — runtime demo",
+          "type": "page",
+          "url": "tauri://localhost/",
+          "webSocketDebuggerUrl": "ws://127.0.0.1:9334/devtools/page/62333976D22645C15DFC92F6D6CFA479"
+        }
+      ],
+      "parseError": null
+    },
+    "listAfterNavigate": {
+      "path": "/json/list",
+      "status": 200,
+      "body": [
+        {
+          "description": "",
+          "devtoolsFrontendUrl": "/devtools/inspector.html?ws=127.0.0.1:9334/devtools/page/62333976D22645C15DFC92F6D6CFA479",
+          "id": "62333976D22645C15DFC92F6D6CFA479",
+          "title": "TauriQt — runtime demo",
+          "type": "page",
+          "url": "tauri://localhost/",
+          "webSocketDebuggerUrl": "ws://127.0.0.1:9334/devtools/page/62333976D22645C15DFC92F6D6CFA479"
+        }
+      ],
+      "parseError": null
+    }
+  },
+  "events": [
+    {
+      "method": "Target.targetCreated",
+      "params": {
+        "targetInfo": {
+          "targetId": "62333976D22645C15DFC92F6D6CFA479",
+          "type": "page",
+          "title": "DEMO_OK",
+          "url": "tauri://localhost/",
+          "attached": true,
+          "canAccessOpener": false,
+          "browserContextId": "393FCC0F77C25CD26F4E1C63C55FF5D4"
+        }
+      },
+      "atMs": 4996,
+      "rawBytes": 258
+    },
+    {
+      "method": "Target.attachedToTarget",
+      "params": {
+        "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1",
+        "targetInfo": {
+          "targetId": "62333976D22645C15DFC92F6D6CFA479",
+          "type": "page",
+          "title": "DEMO_OK",
+          "url": "tauri://localhost/",
+          "attached": true,
+          "canAccessOpener": false,
+          "browserContextId": "393FCC0F77C25CD26F4E1C63C55FF5D4"
+        },
+        "waitingForDebugger": false
+      },
+      "atMs": 6004,
+      "rawBytes": 335
+    },
+    {
+      "method": "Target.detachedFromTarget",
+      "params": {
+        "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1",
+        "targetId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 6011,
+      "rawBytes": 142
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 41,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@210fb02772110e4cbe23ca4a468263e1",
+          "uniqueId": "-3177899635337838404.6043424297716214813",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6014,
+      "rawBytes": 325
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 40,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "4752303771116757894.-5233615455762424852",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6015,
+      "rawBytes": 278
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 39,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@b8c0aa3954891d90f08e2dcb7c988db7",
+          "uniqueId": "-1737421177865735021.7989720926656025643",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6015,
+      "rawBytes": 325
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 38,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "-3593606643975258817.-8766437406338425667",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6016,
+      "rawBytes": 279
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 37,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@69fbee852961f3608d43963ff55482ab",
+          "uniqueId": "-3753990600695208651.-3593619784446488415",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6016,
+      "rawBytes": 326
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 36,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@4728c87eb71486a18318edd9f5376978",
+          "uniqueId": "-4830082786118111038.-2974066516191541153",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6016,
+      "rawBytes": 326
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 35,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "8747093150835794954.-8904516956240932993",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6017,
+      "rawBytes": 278
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 34,
+          "origin": "tauri://localhost",
+          "name": "",
+          "uniqueId": "-8143119611377856277.7718013495633684010",
+          "auxData": {
+            "isDefault": true,
+            "type": "default",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6017,
+      "rawBytes": 259
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+        "name": "commit",
+        "timestamp": 6988.383787
+      },
+      "atMs": 6773,
+      "rawBytes": 174
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+        "name": "DOMContentLoaded",
+        "timestamp": 6988.41368
+      },
+      "atMs": 6773,
+      "rawBytes": 183
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+        "name": "load",
+        "timestamp": 6988.414204
+      },
+      "atMs": 6774,
+      "rawBytes": 172
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+        "name": "networkAlmostIdle",
+        "timestamp": 6988.414097
+      },
+      "atMs": 6774,
+      "rawBytes": 185
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+        "name": "networkIdle",
+        "timestamp": 6997.375047
+      },
+      "atMs": 6774,
+      "rawBytes": 179
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 42,
+          "origin": "",
+          "name": "__cdp_probe_world",
+          "uniqueId": "8241027985334859102.3837819704749341493",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 6795,
+      "rawBytes": 260
+    },
+    {
+      "method": "DOM.setChildNodes",
+      "params": {
+        "parentId": 5,
+        "nodes": [
+          {
+            "nodeId": 6,
+            "parentId": 5,
+            "backendNodeId": 92,
+            "nodeType": 1,
+            "nodeName": "HEAD",
+            "localName": "head",
+            "nodeValue": "",
+            "childNodeCount": 3,
+            "attributes": []
+          },
+          {
+            "nodeId": 7,
+            "parentId": 5,
+            "backendNodeId": 93,
+            "nodeType": 1,
+            "nodeName": "BODY",
+            "localName": "body",
+            "nodeValue": "",
+            "childNodeCount": 4,
+            "attributes": []
+          }
+        ]
+      },
+      "atMs": 6800,
+      "rawBytes": 354
+    },
+    {
+      "method": "DOM.setChildNodes",
+      "params": {
+        "parentId": 7,
+        "nodes": [
+          {
+            "nodeId": 8,
+            "parentId": 7,
+            "backendNodeId": 94,
+            "nodeType": 1,
+            "nodeName": "H1",
+            "localName": "h1",
+            "nodeValue": "",
+            "childNodeCount": 1,
+            "children": [
+              {
+                "nodeId": 9,
+                "parentId": 8,
+                "backendNodeId": 95,
+                "nodeType": 3,
+                "nodeName": "#text",
+                "localName": "",
+                "nodeValue": "TauriQt runtime demo"
+              }
+            ],
+            "attributes": []
+          },
+          {
+            "nodeId": 10,
+            "parentId": 7,
+            "backendNodeId": 96,
+            "nodeType": 1,
+            "nodeName": "P",
+            "localName": "p",
+            "nodeValue": "",
+            "childNodeCount": 1,
+            "children": [
+              {
+                "nodeId": 11,
+                "parentId": 10,
+                "backendNodeId": 97,
+                "nodeType": 3,
+                "nodeName": "#text",
+                "localName": "",
+                "nodeValue": "DEMO_OK — every probed command succeeded"
+              }
+            ],
+            "attributes": [
+              "id",
+              "summary",
+              "class",
+              "ok"
+            ]
+          },
+          {
+            "nodeId": 12,
+            "parentId": 7,
+            "backendNodeId": 98,
+            "nodeType": 1,
+            "nodeName": "DIV",
+            "localName": "div",
+            "nodeValue": "",
+            "childNodeCount": 7,
+            "attributes": [
+              "id",
+              "result"
+            ]
+          },
+          {
+            "nodeId": 13,
+            "parentId": 7,
+            "backendNodeId": 99,
+            "nodeType": 1,
+            "nodeName": "SCRIPT",
+            "localName": "script",
+            "nodeValue": "",
+            "childNodeCount": 1,
+            "children": [
+              {
+                "nodeId": 14,
+                "parentId": 13,
+                "backendNodeId": 100,
+                "nodeType": 3,
+                "nodeName": "#text",
+                "localName": "",
+                "nodeValue": "\n      // Titles are surfaced to the runtime as events, so they double as a\n      // terminal-visible probe while the IPC path is being brought up.\n      const out = document.getElementById(\"result\");\n      const summary = document.getElementById(\"summary\");\n\n      if (typeof window.__TAURI_INTERNALS__ === \"undefined\") {\n        document.title = \"NO_INTERNALS\";\n        summary.textContent = \"window.__TAURI_INTERNALS__ is undefined\";\n        summary.className = \"bad\";\n      } else {\n        const…(+2839 chars)"
+              }
+            ],
+            "attributes": []
+          }
+        ]
+      },
+      "atMs": 6801,
+      "rawBytes": 4617
+    },
+    {
+      "method": "CSS.styleSheetAdded",
+      "params": {
+        "header": {
+          "styleSheetId": "style-sheet-44753-5",
+          "frameId": "62333976D22645C15DFC92F6D6CFA479",
+          "sourceURL": "tauri://localhost/",
+          "origin": "regular",
+          "title": "",
+          "ownerNode": 81,
+          "disabled": false,
+          "isInline": true,
+          "isMutable": false,
+          "isConstructed": false,
+          "startLine": 7,
+          "startColumn": 11,
+          "length": 530,
+          "endLine": 33,
+          "endColumn": 4
+        }
+      },
+      "atMs": 6809,
+      "rawBytes": 358
+    },
+    {
+      "method": "Runtime.consoleAPICalled",
+      "params": {
+        "type": "log",
+        "args": [
+          {
+            "type": "string",
+            "value": "cdp-probe: console.log"
+          }
+        ],
+        "executionContextId": 34,
+        "timestamp": 1791729521169.962,
+        "stackTrace": {
+          "callFrames": [
+            {
+              "functionName": "",
+              "scriptId": "77",
+              "url": "",
+              "lineNumber": 0,
+              "columnNumber": 17
+            },
+            {
+              "functionName": "",
+              "scriptId": "77",
+              "url": "",
+              "lineNumber": 0,
+              "columnNumber": 108
+            }
+          ]
+        }
+      },
+      "atMs": 6815,
+      "rawBytes": 366
+    },
+    {
+      "method": "Runtime.consoleAPICalled",
+      "params": {
+        "type": "warning",
+        "args": [
+          {
+            "type": "string",
+            "value": "cdp-probe: console.warn"
+          }
+        ],
+        "executionContextId": 34,
+        "timestamp": 1791729521170.114,
+        "stackTrace": {
+          "callFrames": [
+            {
+              "functionName": "",
+              "scriptId": "77",
+              "url": "",
+              "lineNumber": 0,
+              "columnNumber": 56
+            },
+            {
+              "functionName": "",
+              "scriptId": "77",
+              "url": "",
+              "lineNumber": 0,
+              "columnNumber": 108
+            }
+          ]
+        }
+      },
+      "atMs": 6815,
+      "rawBytes": 371
+    },
+    {
+      "method": "Runtime.exceptionThrown",
+      "params": {
+        "timestamp": 1791729521172.639,
+        "exceptionDetails": {
+          "exceptionId": 7,
+          "text": "Uncaught",
+          "lineNumber": 0,
+          "columnNumber": 34,
+          "scriptId": "78",
+          "stackTrace": {
+            "callFrames": [
+              {
+                "functionName": "",
+                "scriptId": "78",
+                "url": "",
+                "lineNumber": 0,
+                "columnNumber": 34
+              }
+            ]
+          },
+          "exception": {
+            "type": "object",
+            "subtype": "error",
+            "className": "Error",
+            "description": "Error: cdp-probe-uncaught\n    at <anonymous>:1:35",
+            "objectId": "135504763873250804.34.1",
+            "preview": {
+              "type": "object",
+              "subtype": "error",
+              "description": "Error: cdp-probe-uncaught\n    at <anonymous>:1:35",
+              "overflow": false,
+              "properties": [
+                {
+                  "name": "stack",
+                  "type": "string",
+                  "value": "Error: cdp-probe-uncaught\n    at <anonymous>:1:35"
+                },
+                {
+                  "name": "message",
+                  "type": "string",
+                  "value": "cdp-probe-uncaught"
+                }
+              ]
+            }
+          },
+          "executionContextId": 34
+        }
+      },
+      "atMs": 6817,
+      "rawBytes": 792
+    },
+    {
+      "method": "DOM.childNodeInserted",
+      "params": {
+        "parentNodeId": 7,
+        "previousNodeId": 13,
+        "node": {
+          "nodeId": 15,
+          "backendNodeId": 101,
+          "nodeType": 1,
+          "nodeName": "DIV",
+          "localName": "div",
+          "nodeValue": "",
+          "childNodeCount": 0,
+          "attributes": [
+            "id",
+            "cdp-probe-input",
+            "contenteditable",
+            "true",
+            "style",
+            "position: fixed; left: 0px; top: 0px; width: 300px; height: 120px; border: 1px solid rgb(153, 153, 153); background: rgb(255, 255, 255);"
+          ]
+        }
+      },
+      "atMs": 7599,
+      "rawBytes": 415
+    },
+    {
+      "method": "DOM.childNodeCountUpdated",
+      "params": {
+        "nodeId": 15,
+        "childNodeCount": 1
+      },
+      "atMs": 7613,
+      "rawBytes": 80
+    },
+    {
+      "method": "DOM.childNodeCountUpdated",
+      "params": {
+        "nodeId": 15,
+        "childNodeCount": 2
+      },
+      "atMs": 7627,
+      "rawBytes": 80
+    },
+    {
+      "method": "DOM.childNodeRemoved",
+      "params": {
+        "parentNodeId": 7,
+        "nodeId": 15
+      },
+      "atMs": 7631,
+      "rawBytes": 73
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 7643,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 7643,
+      "rawBytes": 52
+    },
+    {
+      "method": "Page.frameResized",
+      "params": {},
+      "atMs": 7643,
+      "rawBytes": 42
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 7644,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "Page.frameResized",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 42
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "Page.frameResized",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 42
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "CSS.mediaQueryResultChanged",
+      "params": {},
+      "atMs": 8993,
+      "rawBytes": 52
+    },
+    {
+      "method": "Page.frameResized",
+      "params": {},
+      "atMs": 8994,
+      "rawBytes": 42
+    },
+    {
+      "method": "Page.frameStartedNavigating",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "url": "tauri://localhost/",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "navigationType": "differentDocument"
+      },
+      "atMs": 13002,
+      "rawBytes": 206
+    },
+    {
+      "method": "Page.frameStartedLoading",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13003,
+      "rawBytes": 93
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "tauri://localhost/",
+          "method": "GET",
+          "headers": {
+            "sec-ch-ua": "\"Not=A?Brand\";v=\"24\", \"Chromium\";v=\"140\"",
+            "sec-ch-ua-mobile": "?0",
+            "sec-ch-ua-platform": "\"Linux\""
+          },
+          "mixedContentType": "none",
+          "initialPriority": "VeryHigh",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": true
+        },
+        "timestamp": 7006.381457,
+        "wallTime": 1791729527.357445,
+        "initiator": {
+          "type": "other"
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Document",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 13003,
+      "rawBytes": 684
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.38387,
+        "type": "Document",
+        "response": {
+          "url": "tauri://localhost/",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "Content-Type": "text/html",
+            "access-control-allow-origin": "tauri://localhost",
+            "access-control-expose-headers": "tauri-response, content-type"
+          },
+          "mimeType": "text/html",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "remoteIPAddress": "",
+          "remotePort": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 148,
+          "protocol": "tauri",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13004,
+      "rawBytes": 810
+    },
+    {
+      "method": "CSS.styleSheetRemoved",
+      "params": {
+        "styleSheetId": "style-sheet-44753-5"
+      },
+      "atMs": 13007,
+      "rawBytes": 82
+    },
+    {
+      "method": "DOM.scrollableFlagUpdated",
+      "params": {
+        "nodeId": 1,
+        "isScrollable": false
+      },
+      "atMs": 13007,
+      "rawBytes": 81
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "init",
+        "timestamp": 7006.386668
+      },
+      "atMs": 13007,
+      "rawBytes": 172
+    },
+    {
+      "method": "Runtime.executionContextsCleared",
+      "params": {},
+      "atMs": 13008,
+      "rawBytes": 57
+    },
+    {
+      "method": "Page.frameNavigated",
+      "params": {
+        "frame": {
+          "id": "62333976D22645C15DFC92F6D6CFA479",
+          "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+          "url": "tauri://localhost/",
+          "domainAndRegistry": "",
+          "securityOrigin": "tauri://localhost",
+          "securityOriginDetails": {
+            "isLocalhost": true
+          },
+          "mimeType": "text/html",
+          "adFrameStatus": {
+            "adFrameType": "none"
+          },
+          "secureContextType": "SecureLocalhost",
+          "crossOriginIsolatedContextType": "NotIsolated",
+          "gatedAPIFeatures": []
+        },
+        "type": "Navigation"
+      },
+      "atMs": 13009,
+      "rawBytes": 460
+    },
+    {
+      "method": "Network.policyUpdated",
+      "params": {},
+      "atMs": 13013,
+      "rawBytes": 46
+    },
+    {
+      "method": "Target.targetInfoChanged",
+      "params": {
+        "targetInfo": {
+          "targetId": "62333976D22645C15DFC92F6D6CFA479",
+          "type": "page",
+          "title": "tauri://localhost",
+          "url": "tauri://localhost/",
+          "attached": true,
+          "canAccessOpener": false,
+          "browserContextId": "393FCC0F77C25CD26F4E1C63C55FF5D4"
+        }
+      },
+      "atMs": 13013,
+      "rawBytes": 272
+    },
+    {
+      "method": "DOM.documentUpdated",
+      "params": {},
+      "atMs": 13026,
+      "rawBytes": 44
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 43,
+          "origin": "tauri://localhost",
+          "name": "",
+          "uniqueId": "-943681568950658867.1145608332618342734",
+          "auxData": {
+            "isDefault": true,
+            "type": "default",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13026,
+      "rawBytes": 258
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 44,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@69fbee852961f3608d43963ff55482ab",
+          "uniqueId": "-8431774020074435412.-7259475849114031587",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 326
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 45,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@b8c0aa3954891d90f08e2dcb7c988db7",
+          "uniqueId": "7646967583694920998.8905978063781959543",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 324
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 46,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "1559454036364700362.1917899074813301861",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 277
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 47,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@210fb02772110e4cbe23ca4a468263e1",
+          "uniqueId": "-1110355060429901904.1882350784751405967",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 325
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 48,
+          "origin": "tauri://localhost",
+          "name": "__playwright_utility_world_page@4728c87eb71486a18318edd9f5376978",
+          "uniqueId": "6433336803386337230.544097635728726963",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 323
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 49,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "-2694385577266509493.4807750238661533257",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 278
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 50,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "8821175388237833675.9200990438554364089",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 277
+    },
+    {
+      "method": "Runtime.executionContextCreated",
+      "params": {
+        "context": {
+          "id": 51,
+          "origin": "tauri://localhost",
+          "name": "__cdp_probe_world",
+          "uniqueId": "4524988843221026481.-3846755364333751520",
+          "auxData": {
+            "isDefault": false,
+            "type": "isolated",
+            "frameId": "62333976D22645C15DFC92F6D6CFA479"
+          }
+        }
+      },
+      "atMs": 13027,
+      "rawBytes": 278
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.405448,
+        "dataLength": 4256,
+        "encodedDataLength": 0
+      },
+      "atMs": 13027,
+      "rawBytes": 155
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "44753.132",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "ipc://localhost/greet",
+          "method": "POST",
+          "headers": {
+            "tauri-error": "573695143",
+            "Referer": "",
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+            "tauri-callback": "4287970344",
+            "x-tauriqt-payload": "eyJuYW1lIjoiUXQifQ==",
+            "content-type": "application/json",
+            "tauri-invoke-key": "{YvTf0CB&<b.=O1BhWg?"
+          },
+          "mixedContentType": "none",
+          "initialPriority": "High",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": false
+        },
+        "timestamp": 7006.409863,
+        "wallTime": 1791729527.38592,
+        "initiator": {
+          "type": "script",
+          "stack": {
+            "callFrames": [
+              {
+                "functionName": "sendIpcMessage",
+                "scriptId": "6",
+                "url": "userscript:tauri_init_2",
+                "lineNumber": 86,
+                "columnNumber": 4
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 176,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "action",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 335,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 344,
+                "columnNumber": 10
+              },
+              {
+                "functionName": "value",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 324,
+                "columnNumber": 13
+              },
+              {
+                "functionName": "call",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 77,
+                "columnNumber": 32
+              },
+              {
+                "functionName": "main",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 101,
+                "columnNumber": 16
+              },
+              {
+                "functionName": "",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 119,
+                "columnNumber": 10
+              }
+            ]
+          }
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Fetch",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 13033,
+      "rawBytes": 1723
+    },
+    {
+      "method": "CSS.styleSheetAdded",
+      "params": {
+        "header": {
+          "styleSheetId": "style-sheet-44753-6",
+          "frameId": "62333976D22645C15DFC92F6D6CFA479",
+          "sourceURL": "tauri://localhost/",
+          "origin": "regular",
+          "title": "",
+          "ownerNode": 103,
+          "disabled": false,
+          "isInline": true,
+          "isMutable": false,
+          "isConstructed": false,
+          "startLine": 7,
+          "startColumn": 11,
+          "length": 530,
+          "endLine": 33,
+          "endColumn": 4
+        }
+      },
+      "atMs": 13041,
+      "rawBytes": 359
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.383291,
+        "encodedDataLength": 4404
+      },
+      "atMs": 13041,
+      "rawBytes": 143
+    },
+    {
+      "method": "DOM.documentUpdated",
+      "params": {},
+      "atMs": 13041,
+      "rawBytes": 44
+    },
+    {
+      "method": "Page.domContentEventFired",
+      "params": {
+        "timestamp": 7006.413604
+      },
+      "atMs": 13042,
+      "rawBytes": 73
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "DOMContentLoaded",
+        "timestamp": 7006.413604
+      },
+      "atMs": 13043,
+      "rawBytes": 184
+    },
+    {
+      "method": "Page.loadEventFired",
+      "params": {
+        "timestamp": 7006.413733
+      },
+      "atMs": 13043,
+      "rawBytes": 67
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "load",
+        "timestamp": 7006.413733
+      },
+      "atMs": 13043,
+      "rawBytes": 172
+    },
+    {
+      "method": "Page.frameStoppedLoading",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13043,
+      "rawBytes": 93
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "44753.132",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.413906,
+        "type": "Fetch",
+        "response": {
+          "url": "ipc://localhost/greet",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "tauri-response": "ok",
+            "access-control-expose-headers": "tauri-response, content-type, tauri-response",
+            "access-control-allow-origin": "*",
+            "Content-Type": "application/json"
+          },
+          "mimeType": "application/json",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 204,
+          "protocol": "ipc",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13043,
+      "rawBytes": 786
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "44753.132",
+        "timestamp": 7006.414206,
+        "dataLength": 27,
+        "encodedDataLength": 27
+      },
+      "atMs": 13045,
+      "rawBytes": 131
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "44753.132",
+        "timestamp": 7006.414025,
+        "encodedDataLength": 231
+      },
+      "atMs": 13047,
+      "rawBytes": 119
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "44753.133",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "ipc://localhost/report",
+          "method": "POST",
+          "headers": {
+            "tauri-error": "4112846655",
+            "Referer": "",
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+            "tauri-callback": "2952546355",
+            "x-tauriqt-payload": "eyJ0ZXh0IjoiZ3JlZXQ6IEhlbGxvLCBRdCEg4oCUIGZyb20gbGludXgifQ==",
+            "content-type": "application/json",
+            "tauri-invoke-key": "{YvTf0CB&<b.=O1BhWg?"
+          },
+          "mixedContentType": "none",
+          "initialPriority": "High",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": false
+        },
+        "timestamp": 7006.414896,
+        "wallTime": 1791729527.39094,
+        "initiator": {
+          "type": "script",
+          "stack": {
+            "callFrames": [
+              {
+                "functionName": "sendIpcMessage",
+                "scriptId": "6",
+                "url": "userscript:tauri_init_2",
+                "lineNumber": 86,
+                "columnNumber": 4
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 176,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "action",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 335,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 344,
+                "columnNumber": 10
+              },
+              {
+                "functionName": "value",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 324,
+                "columnNumber": 13
+              },
+              {
+                "functionName": "report",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 65,
+                "columnNumber": 18
+              },
+              {
+                "functionName": "call",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 90,
+                "columnNumber": 18
+              }
+            ]
+          }
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Fetch",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 13048,
+      "rawBytes": 1668
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "44753.133",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.420187,
+        "type": "Fetch",
+        "response": {
+          "url": "ipc://localhost/report",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "tauri-response": "ok",
+            "access-control-expose-headers": "tauri-response, content-type, tauri-response",
+            "access-control-allow-origin": "*",
+            "Content-Type": "application/json"
+          },
+          "mimeType": "application/json",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 204,
+          "protocol": "ipc",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13048,
+      "rawBytes": 787
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "44753.133",
+        "timestamp": 7006.421654,
+        "dataLength": 10,
+        "encodedDataLength": 10
+      },
+      "atMs": 13049,
+      "rawBytes": 131
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "44753.133",
+        "timestamp": 7006.420332,
+        "encodedDataLength": 214
+      },
+      "atMs": 13049,
+      "rawBytes": 119
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "44753.134",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "ipc://localhost/win_info",
+          "method": "POST",
+          "headers": {
+            "tauri-error": "3761990871",
+            "Referer": "",
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+            "tauri-callback": "705904806",
+            "x-tauriqt-payload": "e30=",
+            "content-type": "application/json",
+            "tauri-invoke-key": "{YvTf0CB&<b.=O1BhWg?"
+          },
+          "mixedContentType": "none",
+          "initialPriority": "High",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": false
+        },
+        "timestamp": 7006.422298,
+        "wallTime": 1791729527.39836,
+        "initiator": {
+          "type": "script",
+          "stack": {
+            "callFrames": [
+              {
+                "functionName": "sendIpcMessage",
+                "scriptId": "6",
+                "url": "userscript:tauri_init_2",
+                "lineNumber": 86,
+                "columnNumber": 4
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 176,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "action",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 335,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 344,
+                "columnNumber": 10
+              },
+              {
+                "functionName": "value",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 324,
+                "columnNumber": 13
+              },
+              {
+                "functionName": "call",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 77,
+                "columnNumber": 32
+              },
+              {
+                "functionName": "main",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 102,
+                "columnNumber": 16
+              }
+            ]
+          }
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Fetch",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 13049,
+      "rawBytes": 1612
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "44753.134",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7006.426937,
+        "type": "Fetch",
+        "response": {
+          "url": "ipc://localhost/win_info",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "tauri-response": "ok",
+            "access-control-expose-headers": "tauri-response, content-type, tauri-response",
+            "access-control-allow-origin": "*",
+            "Content-Type": "application/json"
+          },
+          "mimeType": "application/json",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 204,
+          "protocol": "ipc",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 13998,
+      "rawBytes": 789
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "44753.134",
+        "timestamp": 7006.427278,
+        "dataLength": 353,
+        "encodedDataLength": 353
+      },
+      "atMs": 13998,
+      "rawBytes": 133
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "44753.134",
+        "timestamp": 7006.427104,
+        "encodedDataLength": 557
+      },
+      "atMs": 14010,
+      "rawBytes": 119
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "44753.135",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "ipc://localhost/report",
+          "method": "POST",
+          "headers": {
+            "tauri-error": "3223830238",
+            "Referer": "",
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+            "tauri-callback": "528563996",
+            "x-tauriqt-payload": "eyJ0ZXh0Ijoid2luX2luZm86IGlubmVyX3NpemU9MTI3N3gxNTYyOyBvdXRlcl9zaXplPTEyNzd4MTU2MjsgaW5uZXJfcG9zaXRpb249MCwwOyBvdXRlcl9wb3NpdGlvbj0wLDA7IHNjYWxlX2ZhY3Rvcj0xLjUwMDA7IHRpdGxlPVRhdXJpUXQg4oCUIGRlbW8gdGl0bGU7IGlzX2Z1bGxzY3JlZW49ZmFsc2U7IGlzX21pbmltaXplZD1mYWxzZTsgaXNfbWF4aW1pemVkPWZhbHNlOyBpc19mb2N1c2VkPWZhbHNlOyBpc19kZWNvcmF0ZWQ9dHJ1ZTsgaXNfcmVzaXphYmxlPXRydWU7IGlzX3Zpc2libGU9dHJ1ZTsgaXNfYWx3YXlzX29uX3RvcD1mYWxzZTsgaXNfbWF4aW1pemFibGU9dHJ1ZTsgaXNfbWluaW1pemFibGU9dHJ1ZTsgaXNfY2xvc2FibGU9dHJ1ZSJ9",
+            "content-type": "application/json",
+            "tauri-invoke-key": "{YvTf0CB&<b.=O1BhWg?"
+          },
+          "mixedContentType": "none",
+          "initialPriority": "High",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": false
+        },
+        "timestamp": 7006.428157,
+        "wallTime": 1791729527.404212,
+        "initiator": {
+          "type": "script",
+          "stack": {
+            "callFrames": [
+              {
+                "functionName": "sendIpcMessage",
+                "scriptId": "6",
+                "url": "userscript:tauri_init_2",
+                "lineNumber": 86,
+                "columnNumber": 4
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 176,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "action",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 335,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 344,
+                "columnNumber": 10
+              },
+              {
+                "functionName": "value",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 324,
+                "columnNumber": 13
+              },
+              {
+                "functionName": "report",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 65,
+                "columnNumber": 18
+              },
+              {
+                "functionName": "call",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 90,
+                "columnNumber": 18
+              }
+            ]
+          }
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Fetch",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 14015,
+      "rawBytes": 2104
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "firstMeaningfulPaintCandidate",
+        "timestamp": 7006.418707
+      },
+      "atMs": 14015,
+      "rawBytes": 197
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "firstContentfulPaint",
+        "timestamp": 7006.418707
+      },
+      "atMs": 14016,
+      "rawBytes": 188
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "firstPaint",
+        "timestamp": 7006.418707
+      },
+      "atMs": 14016,
+      "rawBytes": 178
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "networkAlmostIdle",
+        "timestamp": 7006.413642
+      },
+      "atMs": 14016,
+      "rawBytes": 185
+    },
+    {
+      "method": "Page.lifecycleEvent",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "name": "firstMeaningfulPaint",
+        "timestamp": 7006.418707
+      },
+      "atMs": 14017,
+      "rawBytes": 188
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "44753.135",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7007.378499,
+        "type": "Fetch",
+        "response": {
+          "url": "ipc://localhost/report",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "tauri-response": "ok",
+            "access-control-expose-headers": "tauri-response, content-type, tauri-response",
+            "access-control-allow-origin": "*",
+            "Content-Type": "application/json"
+          },
+          "mimeType": "application/json",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 204,
+          "protocol": "ipc",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 14019,
+      "rawBytes": 787
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "44753.135",
+        "timestamp": 7007.378845,
+        "dataLength": 10,
+        "encodedDataLength": 10
+      },
+      "atMs": 14019,
+      "rawBytes": 131
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "44753.135",
+        "timestamp": 7007.378661,
+        "encodedDataLength": 214
+      },
+      "atMs": 14019,
+      "rawBytes": 119
+    },
+    {
+      "method": "Network.requestWillBeSent",
+      "params": {
+        "requestId": "44753.136",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "documentURL": "tauri://localhost/",
+        "request": {
+          "url": "ipc://localhost/monitors",
+          "method": "POST",
+          "headers": {
+            "tauri-error": "39785419",
+            "Referer": "",
+            "User-Agent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+            "tauri-callback": "328851007",
+            "x-tauriqt-payload": "e30=",
+            "content-type": "application/json",
+            "tauri-invoke-key": "{YvTf0CB&<b.=O1BhWg?"
+          },
+          "mixedContentType": "none",
+          "initialPriority": "High",
+          "referrerPolicy": "strict-origin-when-cross-origin",
+          "isSameSite": false
+        },
+        "timestamp": 7007.379431,
+        "wallTime": 1791729528.355487,
+        "initiator": {
+          "type": "script",
+          "stack": {
+            "callFrames": [
+              {
+                "functionName": "sendIpcMessage",
+                "scriptId": "6",
+                "url": "userscript:tauri_init_2",
+                "lineNumber": 86,
+                "columnNumber": 4
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 176,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "action",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 335,
+                "columnNumber": 37
+              },
+              {
+                "functionName": "",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 344,
+                "columnNumber": 10
+              },
+              {
+                "functionName": "value",
+                "scriptId": "8",
+                "url": "userscript:tauri_init_4",
+                "lineNumber": 324,
+                "columnNumber": 13
+              },
+              {
+                "functionName": "call",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 77,
+                "columnNumber": 32
+              },
+              {
+                "functionName": "main",
+                "scriptId": "14",
+                "url": "tauri://localhost/",
+                "lineNumber": 103,
+                "columnNumber": 16
+              }
+            ]
+          }
+        },
+        "redirectHasExtraInfo": false,
+        "type": "Fetch",
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "hasUserGesture": false
+      },
+      "atMs": 14999,
+      "rawBytes": 1611
+    },
+    {
+      "method": "Network.responseReceived",
+      "params": {
+        "requestId": "44753.136",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "timestamp": 7008.380434,
+        "type": "Fetch",
+        "response": {
+          "url": "ipc://localhost/monitors",
+          "status": 200,
+          "statusText": "OK",
+          "headers": {
+            "tauri-response": "ok",
+            "access-control-expose-headers": "tauri-response, content-type, tauri-response",
+            "access-control-allow-origin": "*",
+            "Content-Type": "application/json"
+          },
+          "mimeType": "application/json",
+          "charset": "",
+          "connectionReused": false,
+          "connectionId": 0,
+          "fromDiskCache": false,
+          "fromServiceWorker": false,
+          "fromPrefetchCache": false,
+          "encodedDataLength": 204,
+          "protocol": "ipc",
+          "alternateProtocolUsage": "alternativeJobWonWithoutRace",
+          "securityState": "secure",
+          "isIpProtectionUsed": false
+        },
+        "hasExtraInfo": false,
+        "frameId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "atMs": 15016,
+      "rawBytes": 789
+    },
+    {
+      "method": "Network.dataReceived",
+      "params": {
+        "requestId": "44753.136",
+        "timestamp": 7008.380797,
+        "dataLength": 283,
+        "encodedDataLength": 283
+      },
+      "atMs": 15016,
+      "rawBytes": 133
+    },
+    {
+      "method": "Network.loadingFinished",
+      "params": {
+        "requestId": "44753.136",
+        "timestamp": 7008.380574,
+        "encodedDataLength": 487
+      },
+      "atMs": 15018,
+      "rawBytes": 119
+    }
+  ],
+  "eventSummary": {
+    "Target.targetCreated": 1,
+    "Target.attachedToTarget": 1,
+    "Target.detachedFromTarget": 1,
+    "Runtime.executionContextCreated": 18,
+    "Page.lifecycleEvent": 13,
+    "DOM.setChildNodes": 2,
+    "CSS.styleSheetAdded": 2,
+    "Runtime.consoleAPICalled": 2,
+    "Runtime.exceptionThrown": 1,
+    "DOM.childNodeInserted": 1,
+    "DOM.childNodeCountUpdated": 2,
+    "DOM.childNodeRemoved": 1,
+    "CSS.mediaQueryResultChanged": 10,
+    "Page.frameResized": 4,
+    "Page.frameStartedNavigating": 1,
+    "Page.frameStartedLoading": 1,
+    "Network.requestWillBeSent": 6,
+    "Network.responseReceived": 6,
+    "CSS.styleSheetRemoved": 1,
+    "DOM.scrollableFlagUpdated": 1,
+    "Runtime.executionContextsCleared": 1,
+    "Page.frameNavigated": 1,
+    "Network.policyUpdated": 1,
+    "Target.targetInfoChanged": 1,
+    "DOM.documentUpdated": 2,
+    "Network.dataReceived": 6,
+    "Network.loadingFinished": 6,
+    "Page.domContentEventFired": 1,
+    "Page.loadEventFired": 1,
+    "Page.frameStoppedLoading": 1
+  },
+  "commands": [
+    {
+      "index": 1,
+      "phase": "browser",
+      "method": "Browser.getVersion",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 12,
+      "rawBytes": 290,
+      "result": {
+        "protocolVersion": "1.3",
+        "product": "tauri-runtime-qt/",
+        "revision": "@0000000000000000000000000000000000000000",
+        "userAgent": "Mozilla/5.0 (X11; Linux aarch64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/6.11.2 Chrome/140.0.0.0 Safari/537.36",
+        "jsVersion": "14.0.365.10"
+      }
+    },
+    {
+      "index": 2,
+      "phase": "browser",
+      "method": "Browser.getBrowserCommandLine",
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 107,
+      "error": {
+        "code": -32000,
+        "message": "Command line not returned because --enable-automation not set."
+      }
+    },
+    {
+      "index": 3,
+      "phase": "browser",
+      "method": "Browser.getWindowForTarget",
+      "params": {
+        "targetId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 980,
+      "rawBytes": 86,
+      "error": {
+        "code": -32601,
+        "message": "'Browser.getWindowForTarget' wasn't found"
+      }
+    },
+    {
+      "index": 4,
+      "phase": "browser",
+      "method": "Browser.getWindowBounds",
+      "params": {
+        "windowId": 1
+      },
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 1999,
+      "rawBytes": 83,
+      "error": {
+        "code": -32601,
+        "message": "'Browser.getWindowBounds' wasn't found"
+      }
+    },
+    {
+      "index": 5,
+      "phase": "browser",
+      "method": "Browser.setDownloadBehavior",
+      "params": {
+        "behavior": "allow",
+        "downloadPath": "/tmp/cdp-probe-downloads",
+        "eventsEnabled": true
+      },
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 89,
+      "error": {
+        "code": -32000,
+        "message": "Browser context management is not supported."
+      }
+    },
+    {
+      "index": 6,
+      "phase": "targets",
+      "method": "Target.getTargets",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 13,
+      "rawBytes": 236,
+      "result": {
+        "targetInfos": [
+          {
+            "targetId": "62333976D22645C15DFC92F6D6CFA479",
+            "type": "page",
+            "title": "DEMO_OK",
+            "url": "tauri://localhost/",
+            "attached": true,
+            "canAccessOpener": false,
+            "browserContextId": "393FCC0F77C25CD26F4E1C63C55FF5D4"
+          }
+        ]
+      }
+    },
+    {
+      "index": 7,
+      "phase": "targets",
+      "method": "Target.getBrowserContexts",
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 983,
+      "rawBytes": 56,
+      "error": {
+        "code": -32000,
+        "message": "Not allowed"
+      }
+    },
+    {
+      "index": 8,
+      "phase": "targets",
+      "method": "Target.setDiscoverTargets",
+      "params": {
+        "discover": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 6,
+      "rawBytes": 20,
+      "result": {}
+    },
+    {
+      "index": 9,
+      "phase": "targets",
+      "method": "Target.getTargetInfo",
+      "params": {
+        "targetId": "62333976D22645C15DFC92F6D6CFA479"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 994,
+      "rawBytes": 233,
+      "result": {
+        "targetInfo": {
+          "targetId": "62333976D22645C15DFC92F6D6CFA479",
+          "type": "page",
+          "title": "DEMO_OK",
+          "url": "tauri://localhost/",
+          "attached": true,
+          "canAccessOpener": false,
+          "browserContextId": "393FCC0F77C25CD26F4E1C63C55FF5D4"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "phase": "targets",
+      "method": "Target.setAutoAttach",
+      "params": {
+        "autoAttach": true,
+        "waitForDebuggerOnStart": false,
+        "flatten": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 6,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 11,
+      "phase": "targets",
+      "note": "Playwright shape (waitForDebuggerOnStart + filter)",
+      "method": "Target.setAutoAttach",
+      "params": {
+        "autoAttach": true,
+        "waitForDebuggerOnStart": true,
+        "flatten": true,
+        "filter": [
+          {
+            "type": "browser",
+            "exclude": true
+          },
+          {
+            "type": "tab",
+            "exclude": true
+          },
+          {
+            "type": "page",
+            "exclude": false
+          }
+        ]
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 12,
+      "phase": "targets",
+      "method": "Target.attachToTarget",
+      "params": {
+        "targetId": "62333976D22645C15DFC92F6D6CFA479",
+        "flatten": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 5,
+      "rawBytes": 67,
+      "result": {
+        "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1"
+      }
+    },
+    {
+      "index": 13,
+      "phase": "targets",
+      "note": "flat session: command with sessionId",
+      "method": "Runtime.evaluate",
+      "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1",
+      "params": {
+        "expression": "\"session-ok: \" + document.title",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 3,
+      "rawBytes": 124,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "session-ok: DEMO_OK"
+        }
+      }
+    },
+    {
+      "index": 14,
+      "phase": "targets",
+      "note": "flat session: page command with sessionId",
+      "method": "Page.getFrameTree",
+      "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 478,
+      "result": {
+        "frameTree": {
+          "frame": {
+            "id": "62333976D22645C15DFC92F6D6CFA479",
+            "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+            "url": "tauri://localhost/",
+            "domainAndRegistry": "",
+            "securityOrigin": "tauri://localhost",
+            "securityOriginDetails": {
+              "isLocalhost": true
+            },
+            "mimeType": "text/html",
+            "adFrameStatus": {
+              "adFrameType": "none"
+            },
+            "secureContextType": "SecureLocalhost",
+            "crossOriginIsolatedContextType": "NotIsolated",
+            "gatedAPIFeatures": []
+          }
+        }
+      }
+    },
+    {
+      "index": 15,
+      "phase": "targets",
+      "method": "Target.detachFromTarget",
+      "params": {
+        "sessionId": "4D25B16B6DD6D318DC8FDF6022E5BEA1"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 16,
+      "phase": "enables",
+      "method": "Page.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 0,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 17,
+      "phase": "enables",
+      "method": "Runtime.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 6,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 18,
+      "phase": "enables",
+      "method": "Log.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 19,
+      "phase": "pause",
+      "method": "<pause>",
+      "status": "pause",
+      "durationMs": 750,
+      "note": "settle: passive event window after Page/Runtime/Log.enable"
+    },
+    {
+      "index": 20,
+      "phase": "dom",
+      "method": "Page.getFrameTree",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 431,
+      "result": {
+        "frameTree": {
+          "frame": {
+            "id": "62333976D22645C15DFC92F6D6CFA479",
+            "loaderId": "9BE4F692C1B89802D156B72E7AD2E8DD",
+            "url": "tauri://localhost/",
+            "domainAndRegistry": "",
+            "securityOrigin": "tauri://localhost",
+            "securityOriginDetails": {
+              "isLocalhost": true
+            },
+            "mimeType": "text/html",
+            "adFrameStatus": {
+              "adFrameType": "none"
+            },
+            "secureContextType": "SecureLocalhost",
+            "crossOriginIsolatedContextType": "NotIsolated",
+            "gatedAPIFeatures": []
+          }
+        }
+      }
+    },
+    {
+      "index": 21,
+      "phase": "dom",
+      "method": "Page.setLifecycleEventsEnabled",
+      "params": {
+        "enabled": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 3,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 22,
+      "phase": "dom",
+      "note": "Playwright installs init scripts this way",
+      "method": "Page.addScriptToEvaluateOnNewDocument",
+      "params": {
+        "source": "window.__cdpProbeInit = true;"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 37,
+      "result": {
+        "identifier": "1"
+      }
+    },
+    {
+      "index": 23,
+      "phase": "dom",
+      "method": "Page.removeScriptToEvaluateOnNewDocument",
+      "params": {
+        "identifier": "1"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 8,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 24,
+      "phase": "dom",
+      "method": "Page.createIsolatedWorld",
+      "params": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "worldName": "__cdp_probe_world",
+        "grantUniveralAccess": false
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 10,
+      "rawBytes": 44,
+      "result": {
+        "executionContextId": 42
+      }
+    },
+    {
+      "index": 25,
+      "phase": "dom",
+      "method": "DOM.getDocument",
+      "params": {
+        "depth": 1
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 907,
+      "result": {
+        "root": {
+          "nodeId": 1,
+          "backendNodeId": 82,
+          "nodeType": 9,
+          "nodeName": "#document",
+          "localName": "",
+          "nodeValue": "",
+          "childNodeCount": 4,
+          "children": [
+            {
+              "nodeId": 2,
+              "parentId": 1,
+              "backendNodeId": 89,
+              "nodeType": 10,
+              "nodeName": "html",
+              "localName": "",
+              "nodeValue": "",
+              "publicId": "",
+              "systemId": ""
+            },
+            {
+              "nodeId": 3,
+              "parentId": 1,
+              "backendNodeId": 90,
+              "nodeType": 8,
+              "nodeName": "#comment",
+              "localName": "",
+              "nodeValue": " SPDX-FileCopyrightText: 2026 Alper Çelik "
+            },
+            {
+              "nodeId": 4,
+              "parentId": 1,
+              "backendNodeId": 91,
+              "nodeType": 8,
+              "nodeName": "#comment",
+              "localName": "",
+              "nodeValue": " SPDX-License-Identifier: MIT "
+            },
+            {
+              "nodeId": 5,
+              "parentId": 1,
+              "backendNodeId": 83,
+              "nodeType": 1,
+              "nodeName": "HTML",
+              "localName": "html",
+              "nodeValue": "",
+              "childNodeCount": 2,
+              "attributes": [
+                "lang",
+                "en"
+              ],
+              "frameId": "62333976D22645C15DFC92F6D6CFA479"
+            }
+          ],
+          "documentURL": "tauri://localhost/",
+          "baseURL": "tauri://localhost/",
+          "xmlVersion": "",
+          "compatibilityMode": "NoQuirksMode"
+        }
+      }
+    },
+    {
+      "index": 26,
+      "phase": "dom",
+      "method": "DOM.querySelector",
+      "params": {
+        "nodeId": 1,
+        "selector": "#summary"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 3,
+      "rawBytes": 32,
+      "result": {
+        "nodeId": 10
+      }
+    },
+    {
+      "index": 27,
+      "phase": "dom",
+      "method": "CSS.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 8,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 28,
+      "phase": "runtime",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "1+1",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 75,
+      "result": {
+        "result": {
+          "type": "number",
+          "value": 2,
+          "description": "2"
+        }
+      }
+    },
+    {
+      "index": 29,
+      "phase": "runtime",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "document.title",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 65,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "DEMO_OK"
+        }
+      }
+    },
+    {
+      "index": 30,
+      "phase": "runtime",
+      "note": "console visibility probe",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "(() => { console.log(\"cdp-probe: console.log\"); console.warn(\"cdp-probe: console.warn\"); return \"logged\"; })()",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 64,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "logged"
+        }
+      }
+    },
+    {
+      "index": 31,
+      "phase": "runtime",
+      "note": "exception visibility probe",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "(() => { setTimeout(() => { throw new Error(\"cdp-probe-uncaught\"); }, 0); return \"scheduled\"; })()",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 67,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "scheduled"
+        }
+      }
+    },
+    {
+      "index": 32,
+      "phase": "runtime",
+      "note": "end-to-end: Tauri invoke(\"greet\") through the page",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "window.__TAURI_INTERNALS__.invoke(\"greet\",{name:\"cdp\"})",
+        "awaitPromise": true,
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 5,
+      "rawBytes": 87,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "Hello, cdp! — from linux"
+        }
+      }
+    },
+    {
+      "index": 33,
+      "phase": "runtime",
+      "note": "end-to-end: Tauri invoke(\"report\") reaches the Rust side",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "window.__TAURI_INTERNALS__.invoke(\"report\",{text:\"cdp-probe: evaluate reached Rust\"})",
+        "awaitPromise": true,
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 66,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "reported"
+        }
+      }
+    },
+    {
+      "index": 34,
+      "phase": "pause",
+      "method": "<pause>",
+      "status": "pause",
+      "durationMs": 750,
+      "note": "settle: console/exception events after the probes"
+    },
+    {
+      "index": 35,
+      "phase": "network",
+      "method": "Network.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 36,
+      "phase": "network",
+      "method": "Network.getAllCookies",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 33,
+      "result": {
+        "cookies": []
+      }
+    },
+    {
+      "index": 37,
+      "phase": "network",
+      "method": "Network.getCookies",
+      "params": {
+        "urls": [
+          "tauri://localhost/"
+        ]
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 0,
+      "rawBytes": 33,
+      "result": {
+        "cookies": []
+      }
+    },
+    {
+      "index": 38,
+      "phase": "network",
+      "method": "Network.setCookie",
+      "params": {
+        "name": "cdp_probe",
+        "value": "1",
+        "url": "tauri://localhost/",
+        "path": "/"
+      },
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 0,
+      "rawBytes": 80,
+      "error": {
+        "code": -32602,
+        "message": "URL must have scheme http or https"
+      }
+    },
+    {
+      "index": 39,
+      "phase": "network",
+      "note": "http:// target",
+      "method": "Network.setCookie",
+      "params": {
+        "name": "cdp_probe_http",
+        "value": "1",
+        "url": "http://localhost/",
+        "path": "/"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 35,
+      "result": {
+        "success": true
+      }
+    },
+    {
+      "index": 40,
+      "phase": "network",
+      "note": "after setCookie",
+      "method": "Network.getAllCookies",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 6,
+      "rawBytes": 253,
+      "result": {
+        "cookies": [
+          {
+            "name": "cdp_probe_http",
+            "value": "1",
+            "domain": "localhost",
+            "path": "/",
+            "expires": -1,
+            "size": 15,
+            "httpOnly": false,
+            "secure": false,
+            "session": true,
+            "priority": "Medium",
+            "sameParty": false,
+            "sourceScheme": "NonSecure",
+            "sourcePort": 80
+          }
+        ]
+      }
+    },
+    {
+      "index": 41,
+      "phase": "network",
+      "method": "Storage.getCookies",
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 90,
+      "error": {
+        "code": -32000,
+        "message": "Browser context management is not supported."
+      }
+    },
+    {
+      "index": 42,
+      "phase": "network",
+      "method": "Network.deleteCookies",
+      "params": {
+        "name": "cdp_probe",
+        "url": "tauri://localhost/"
+      },
+      "status": "error",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 88,
+      "error": {
+        "code": -32602,
+        "message": "An http or https url URL must be specified"
+      }
+    },
+    {
+      "index": 43,
+      "phase": "network",
+      "note": "http:// target",
+      "method": "Network.deleteCookies",
+      "params": {
+        "name": "cdp_probe_http",
+        "url": "http://localhost/"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 0,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 44,
+      "phase": "network",
+      "method": "Network.clearBrowserCookies",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 0,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 45,
+      "phase": "input",
+      "note": "arm click/key/input observers + contenteditable target",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "(() => {\n  window.__cdpProbe = { clicks: [], keys: [], inputs: [] };\n  document.addEventListener('click', (e) => window.__cdpProbe.clicks.push({ x: e.clientX, y: e.clientY, isTrusted: e.isTrusted }), true);\n  document.addEventListener('keydown', (e) => window.__cdpProbe.keys.push({ key: e.key, isTrusted: e.isTrusted }), true);\n  document.addEventListener('input', (e) => window.__cdpProbe.inputs.push({ inputType: e.inputType, data: e.data, isTrusted: e.isTrusted }), true);\n  const box = document.createElement('div');\n  box.id = 'cdp-probe-input';\n  box.contentEditable = 'true';\n  box.style.cssText = 'position:fixed;left:0;top:0;width:300px;height:120px;border:1px solid #999;background:#fff';\n  document.body.appendChild(box);\n  box.focus();\n  return document.activeElement.id;\n})()",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 6,
+      "rawBytes": 73,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "cdp-probe-input"
+        }
+      }
+    },
+    {
+      "index": 46,
+      "phase": "input",
+      "method": "Input.dispatchMouseEvent",
+      "params": {
+        "type": "mousePressed",
+        "x": 40,
+        "y": 60,
+        "button": "left",
+        "clickCount": 1
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 9,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 47,
+      "phase": "input",
+      "method": "Input.dispatchMouseEvent",
+      "params": {
+        "type": "mouseReleased",
+        "x": 40,
+        "y": 60,
+        "button": "left",
+        "clickCount": 1
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 48,
+      "phase": "input",
+      "method": "Input.insertText",
+      "params": {
+        "text": "cdp-probe-text"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 49,
+      "phase": "input",
+      "method": "Input.dispatchKeyEvent",
+      "params": {
+        "type": "keyDown",
+        "key": "a",
+        "code": "KeyA",
+        "windowsVirtualKeyCode": 65,
+        "nativeVirtualKeyCode": 65,
+        "text": "a"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 14,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 50,
+      "phase": "input",
+      "method": "Input.dispatchKeyEvent",
+      "params": {
+        "type": "keyUp",
+        "key": "a",
+        "code": "KeyA",
+        "windowsVirtualKeyCode": 65,
+        "nativeVirtualKeyCode": 65
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 51,
+      "phase": "input",
+      "note": "read back: observed events + resulting text",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "(() => {\n  const box = document.getElementById('cdp-probe-input');\n  const out = {\n    clicks: window.__cdpProbe.clicks,\n    keys: window.__cdpProbe.keys,\n    inputs: window.__cdpProbe.inputs,\n    activeElement: document.activeElement ? document.activeElement.id : null,\n    boxText: box ? box.textContent : null,\n  };\n  if (box) box.remove();\n  return JSON.stringify(out);\n})()",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 2,
+      "rawBytes": 383,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "{\"clicks\":[{\"x\":40,\"y\":60,\"isTrusted\":true}],\"keys\":[{\"key\":\"a\",\"isTrusted\":true}],\"inputs\":[{\"inputType\":\"insertText\",\"data\":\"cdp-probe-text\",\"isTrusted\":true},{\"inputType\":\"insertText\",\"data\":\"a\",\"isTrusted\":true}],\"activeElement\":\"cdp-probe-input\",\"boxText\":\"cdp-probe-texta\"}"
+        }
+      }
+    },
+    {
+      "index": 52,
+      "phase": "emulation",
+      "method": "Emulation.setDeviceMetricsOverride",
+      "params": {
+        "width": 800,
+        "height": 600,
+        "deviceScaleFactor": 1,
+        "mobile": false
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 12,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 53,
+      "phase": "emulation",
+      "method": "Emulation.clearDeviceMetricsOverride",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1350,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 54,
+      "phase": "artifacts",
+      "method": "Page.captureScreenshot",
+      "params": {
+        "format": "png"
+      },
+      "status": "result",
+      "timeoutMs": 15000,
+      "durationMs": 3126,
+      "rawBytes": 281134,
+      "result": {
+        "data": {
+          "@base64": true,
+          "chars": 281104,
+          "approxBytes": 210828,
+          "head": "iVBORw0KGgoAAAANSUhEUgAA",
+          "tail": "rkJggg==",
+          "format": "png",
+          "width": 1277,
+          "height": 1562
+        }
+      }
+    },
+    {
+      "index": 55,
+      "phase": "artifacts",
+      "method": "Page.printToPDF",
+      "params": {
+        "printBackground": true
+      },
+      "status": "error",
+      "timeoutMs": 15000,
+      "durationMs": 868,
+      "rawBytes": 76,
+      "error": {
+        "code": -32601,
+        "message": "'Page.printToPDF' wasn't found"
+      }
+    },
+    {
+      "index": 56,
+      "phase": "security",
+      "method": "Security.enable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 57,
+      "phase": "security",
+      "method": "Fetch.enable",
+      "params": {},
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 58,
+      "phase": "security",
+      "note": "cleanup: never leave interception armed",
+      "method": "Fetch.disable",
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 1,
+      "rawBytes": 21,
+      "result": {}
+    },
+    {
+      "index": 59,
+      "phase": "navigate",
+      "method": "Page.navigate",
+      "params": {
+        "url": "tauri://localhost/"
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 4,
+      "rawBytes": 130,
+      "result": {
+        "frameId": "62333976D22645C15DFC92F6D6CFA479",
+        "loaderId": "54D3CC1915C83619D77B8EE34A7231D0",
+        "isDownload": false
+      }
+    },
+    {
+      "index": 60,
+      "phase": "pause",
+      "method": "<pause>",
+      "status": "pause",
+      "durationMs": 1500,
+      "note": "settle: navigation events"
+    },
+    {
+      "index": 61,
+      "phase": "navigate",
+      "note": "after reload",
+      "method": "Runtime.evaluate",
+      "params": {
+        "expression": "document.title",
+        "returnByValue": true
+      },
+      "status": "result",
+      "timeoutMs": 5000,
+      "durationMs": 496,
+      "rawBytes": 85,
+      "result": {
+        "result": {
+          "type": "string",
+          "value": "TauriQt — runtime demo"
+        }
+      }
+    },
+    {
+      "index": 62,
+      "phase": "pause",
+      "method": "<pause>",
+      "status": "pause",
+      "durationMs": 500,
+      "note": "settle: final drain"
+    }
+  ]
+}

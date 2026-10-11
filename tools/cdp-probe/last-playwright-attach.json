@@ -1,0 +1,146 @@
+{
+  "endpoint": "http://127.0.0.1:9333",
+  "playwrightVersion": null,
+  "startedAt": "2026-10-11T14:34:18.395Z",
+  "steps": [
+    {
+      "name": "browser.version()",
+      "ok": true,
+      "ms": 0,
+      "value": ""
+    },
+    {
+      "name": "browser.contexts().length",
+      "ok": true,
+      "ms": 0,
+      "value": 1
+    },
+    {
+      "name": "page.title()",
+      "ok": true,
+      "ms": 6,
+      "value": "DEMO_OK"
+    },
+    {
+      "name": "page.url()",
+      "ok": true,
+      "ms": 0,
+      "value": "tauri://localhost/"
+    },
+    {
+      "name": "page.evaluate('1+1')",
+      "ok": true,
+      "ms": 6,
+      "value": 2
+    },
+    {
+      "name": "page.evaluate(invoke greet)",
+      "ok": true,
+      "ms": 6,
+      "value": "Hello, playwright! — from linux"
+    },
+    {
+      "name": "page.evaluate(invoke report)",
+      "ok": true,
+      "ms": 4,
+      "value": "reported"
+    },
+    {
+      "name": "console message reaches page.on(\"console\")",
+      "ok": true,
+      "ms": 3,
+      "value": "log: playwright-console-probe"
+    },
+    {
+      "name": "uncaught error reaches page.on(\"pageerror\")",
+      "ok": true,
+      "ms": 3,
+      "value": "playwright-pageerror-probe"
+    },
+    {
+      "name": "page.click('#summary')",
+      "ok": true,
+      "ms": 49
+    },
+    {
+      "name": "page.screenshot()",
+      "ok": true,
+      "ms": 188,
+      "value": "210826 bytes, png=true"
+    },
+    {
+      "name": "page.$eval(\"#summary\", el => el.textContent)",
+      "ok": true,
+      "ms": 45,
+      "value": "DEMO_OK — every probed command succeeded"
+    },
+    {
+      "name": "context.cookies() (before add)",
+      "ok": true,
+      "ms": 17,
+      "value": "[]"
+    },
+    {
+      "name": "context.addCookies([pw_probe])",
+      "ok": true,
+      "ms": 2
+    },
+    {
+      "name": "context.cookies() (after add)",
+      "ok": true,
+      "ms": 6,
+      "value": "[\"pw_probe\"]"
+    },
+    {
+      "name": "context.clearCookies()",
+      "ok": true,
+      "ms": 4
+    },
+    {
+      "name": "context.cookies() (after clear)",
+      "ok": true,
+      "ms": 2,
+      "value": "[]"
+    },
+    {
+      "name": "page.setViewportSize({width:800,height:600})",
+      "ok": true,
+      "ms": 11
+    },
+    {
+      "name": "page.viewportSize()",
+      "ok": true,
+      "ms": 0,
+      "value": "{\"width\":800,\"height\":600}"
+    },
+    {
+      "name": "network: page.on(\"request\") during goto",
+      "ok": true,
+      "ms": 351,
+      "value": "goto status=200 requests=16 first=tauri://localhost/"
+    },
+    {
+      "name": "page.evaluate(document.title) after goto",
+      "ok": true,
+      "ms": 12,
+      "value": "DEMO_OK"
+    },
+    {
+      "name": "context.newPage()",
+      "ok": false,
+      "ms": 4,
+      "error": "browserContext.newPage: Protocol error (Target.createTarget): Not supported",
+      "knownUnsupported": true
+    },
+    {
+      "name": "browser.close()",
+      "ok": true,
+      "ms": 9,
+      "value": "closed"
+    }
+  ],
+  "attached": true,
+  "pages": 1,
+  "durationMs": 808,
+  "finishedAt": "2026-10-11T14:34:19.203Z"
+}

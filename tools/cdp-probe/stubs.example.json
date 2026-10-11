@@ -1,0 +1,12 @@
+{
+  "vars": {},
+  "requests": {
+    "Browser.setDownloadBehavior": { "result": {} }
+  },
+  "rewrites": {
+    "Storage.getCookies": { "as": "Network.getAllCookies", "on": "page", "params": {} },
+    "Storage.clearCookies": { "as": "Network.clearBrowserCookies", "on": "page", "params": {} },
+    "Storage.setCookies": { "as": "Network.setCookie", "on": "page", "split": "cookies" }
+  },
+  "injectEvents": {}
+}
