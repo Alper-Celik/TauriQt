@@ -55,7 +55,29 @@ driver_version="$("$CHROMEDRIVER" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.
 [[ -n "$driver_version" ]] || { echo "cannot read chromedriver version" >&2; exit 1; }
 
 MITM_PORT="${WDIO_MITM_PORT:-9335}"
-STUBS="$here/cdp-stubs.json"
+BASE_STUBS="$here/cdp-stubs.json"
+STUBS="$checkout/wdio-cdp-stubs.json"
+
+# ChromeDriver opens a fresh tab per session (`Target.createTarget`,
+# {hidden:true, url:"about:blank"}); QtWebEngine cannot create a second target
+# ("Browser context management is not supported"), so the stub answers with the
+# app's own page target instead and the session drives that.
+page_id="$(curl -sf "http://127.0.0.1:$CDP_PORT/json/list" | python3 -c '
+import json, sys
+pages = [t for t in json.load(sys.stdin) if t.get("type") == "page"]
+app = [t for t in pages if ":3000" in (t.get("url") or "")]
+chosen = (app or pages)
+print(chosen[0]["id"] if chosen else "")')"
+[[ -n "$page_id" ]] || { echo "no page target on 127.0.0.1:$CDP_PORT" >&2; exit 1; }
+
+python3 - "$BASE_STUBS" "$STUBS" "$page_id" <<'STUBS_PY'
+import json, sys
+base, out, target = sys.argv[1], sys.argv[2], sys.argv[3]
+stubs = json.load(open(base))
+stubs.setdefault("vars", {})["appTargetId"] = target
+stubs.setdefault("requests", {})["Target.createTarget"] = {"result": {"targetId": "$appTargetId"}}
+json.dump(stubs, open(out, "w"), indent=2)
+STUBS_PY
 
 cleanup() {
   [[ -n "${DRIVER_PID:-}" ]] && kill "$DRIVER_PID" 2>/dev/null || true
