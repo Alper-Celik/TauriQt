@@ -47,7 +47,7 @@ ROOT="$PWD"
 
 TIMEOUT=25
 APP_TIMEOUT=18
-APP="${APP:-$ROOT/target/debug/tauriqt}"
+APP="${APP:-${TAURIQT_BIN:-$ROOT/target/debug/tauriqt}}"
 KEEP=0
 BUILD=1
 
@@ -229,7 +229,30 @@ app_start() {
   local extra_env=("$@")
   APP_LOG="$WORK/app-$APP_RUN.log"
   : > "$APP_LOG"
-  # shellcheck disable=SC2086
+
+  # The session runs under `env -i`, but the app must keep whatever the caller
+  # configured for graphics and tracing: a caller that knows this box has no GPU
+  # (the Nix checks do) has to be able to say so, and the harness contract in
+  # TAURIQT_TRACE has to survive the curated environment too. Listed after the
+  # defaults above so a caller's value wins; per-session extras still win over
+  # anything here.
+  local -a passthrough=()
+  local var
+  for var in QTWEBENGINE_CHROMIUM_FLAGS LIBGL_ALWAYS_SOFTWARE QT_OPENGL FONTCONFIG_FILE \
+    TAURIQT_TRACE TAURIQT_EXIT_AFTER_MS TAURIQT_PROXY_DEBUG TAURIQT_SCREEN_DEBUG; do
+    [[ -n "${!var:-}" ]] && passthrough+=("$var=${!var}")
+  done
+
+  # A caller that supplies the binary means "run it directly, never call nix" —
+  # the Nix checks do that, and their sandbox only carries a stub for `nix`.
+  # Without it, the documented dev-machine idiom reaches the toolchain.
+  local -a launch
+  if [[ -n "${TAURIQT_BIN:-}" ]]; then
+    launch=(bash -c 'cd "$1" && exec env LD_LIBRARY_PATH= "$2"' _ "$ROOT" "$TAURIQT_BIN")
+  else
+    launch=(bash -c 'cd "$1" && exec env LD_LIBRARY_PATH= nix develop -c "$2"' _ "$ROOT" "$APP")
+  fi
+
   env -i \
     PATH="$PATH" HOME="$HOME" USER="${USER:-alper}" \
     XDG_RUNTIME_DIR="$SESS_XDG" \
@@ -237,9 +260,10 @@ app_start() {
     SWAYSOCK="$SESS_SOCK" \
     QT_QPA_PLATFORM=wayland \
     QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox \
+    "${passthrough[@]}" \
     "${extra_env[@]}" \
     setsid timeout -k 2 "$APP_TIMEOUT" \
-      bash -c 'cd "$1" && exec env LD_LIBRARY_PATH= nix develop -c "$2"' _ "$ROOT" "$APP" \
+      "${launch[@]}" \
     >"$APP_LOG" 2>&1 &
   APP_PID=$!
   APP_PIDS+=("$APP_PID")
