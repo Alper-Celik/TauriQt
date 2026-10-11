@@ -14,6 +14,14 @@
 # fix-up rewrites just that field (see tools/webdriver-probe/version-fixup.mjs).
 #
 # Usage: integrations/readest/e2e.sh [extra wdio args...]
+# Two proxies are chained in front of the app, because ChromeDriver needs both:
+#   chromedriver -> version-fixup (:9334) -> mitm (:9335) -> QtWebEngine (:9333)
+# `version-fixup` fakes the Browser field of /json/version (QtWebEngine publishes
+# its Qt application name there), and `mitm` stubs the handful of CDP methods Qt
+# does not implement — `Target.getBrowserContexts` fails session creation
+# outright with "Browser context management is not supported", and the Storage.*
+# cookie commands are remapped to their Network.* equivalents.
+#
 # Env: READEST_CDP_PORT (9333), WDIO_DRIVER_PORT (9515), WDIO_FIXUP_PORT (9334),
 #      READEST_CHECKOUT, CHROMEDRIVER (otherwise taken from nixpkgs)
 set -euo pipefail
@@ -46,15 +54,26 @@ fi
 driver_version="$("$CHROMEDRIVER" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
 [[ -n "$driver_version" ]] || { echo "cannot read chromedriver version" >&2; exit 1; }
 
+MITM_PORT="${WDIO_MITM_PORT:-9335}"
+STUBS="$here/cdp-stubs.json"
+
 cleanup() {
   [[ -n "${DRIVER_PID:-}" ]] && kill "$DRIVER_PID" 2>/dev/null || true
   [[ -n "${FIXUP_PID:-}" ]] && kill "$FIXUP_PID" 2>/dev/null || true
+  [[ -n "${MITM_PID:-}" ]] && kill "$MITM_PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
-echo "fix-up proxy : 127.0.0.1:$FIXUP_PORT -> 127.0.0.1:$CDP_PORT (browser=Chrome/$driver_version)"
+echo "stub proxy   : 127.0.0.1:$MITM_PORT -> 127.0.0.1:$CDP_PORT ($STUBS)"
+node "$repo/tools/cdp-probe/mitm.mjs" \
+  --listen "$MITM_PORT" --upstream "127.0.0.1:$CDP_PORT" \
+  --log "$checkout/wdio-mitm.jsonl" --stubs "$STUBS" \
+  >"$checkout/wdio-mitm.log" 2>&1 &
+MITM_PID=$!
+
+echo "fix-up proxy : 127.0.0.1:$FIXUP_PORT -> 127.0.0.1:$MITM_PORT (browser=Chrome/$driver_version)"
 node "$repo/tools/webdriver-probe/version-fixup.mjs" \
-  --port="$FIXUP_PORT" --target="127.0.0.1:$CDP_PORT" --browser-version="Chrome/$driver_version" \
+  --port="$FIXUP_PORT" --target="127.0.0.1:$MITM_PORT" --browser-version="Chrome/$driver_version" \
   >"$checkout/wdio-fixup.log" 2>&1 &
 FIXUP_PID=$!
 
