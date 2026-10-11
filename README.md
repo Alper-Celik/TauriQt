@@ -4,10 +4,12 @@ A **Qt-based runtime for Tauri 2 on Linux**: Qt windowing replaces tao, QtWebEng
 replaces WebKitGTK (webkit2gtk). It is a custom `tauri_runtime::Runtime`, not a patch to
 wry — an app picks it at the type level.
 
-> **Fully vibe coded.** Every line in this repository was written by an LLM agent, driven
-> by the specification the author wrote and the harnesses that grade it. Nobody has read
-> it line by line. It is working code, not reviewed code — the checks below exist
-> precisely because the code was not audited by hand.
+> **Fully vibe coded, in a day.** Every line in this repository — the C++ Qt side, the
+> Rust runtime, the demo, the harnesses — was written by an LLM agent, driven by the
+> specification the author wrote and the checks that grade it, and the whole thing landed
+> in a single day (all 47 commits are dated 2026-10-11). Nobody has read it line by line.
+> It is working code, not reviewed code — the checks below exist precisely because the
+> code was not audited by hand.
 
 ## What it is
 
