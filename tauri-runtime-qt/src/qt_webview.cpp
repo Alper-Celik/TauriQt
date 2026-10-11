@@ -19,6 +19,8 @@
 #include <QtPrintSupport/QPrintDialog>
 #include <QtPrintSupport/QPrinter>
 #include <QtWebEngineCore/QWebEnginePage>
+#include <QtWebEngineCore/QWebEngineScript>
+#include <QtWebEngineCore/QWebEngineScriptCollection>
 #include <QtWebEngineWidgets/QWebEngineView>
 #include <QtWidgets/QDialog>
 
@@ -35,6 +37,7 @@ struct Entry {
 
 std::unordered_map<uint64_t, Entry> g_webviews;
 uint64_t g_next_id = 1;
+uint64_t g_next_script_id = 1;
 
 Entry* find_entry(uint64_t id) {
     auto it = g_webviews.find(id);
@@ -86,8 +89,11 @@ uint64_t qt_webview_create(uint64_t window_id, rust::Str url) {
     QObject::connect(page, &QWebEnginePage::titleChanged, view,
                      [id](const QString& t) { emit_event(id, 4, t); });
 
-    // Let the scheme layer find this webview's profile for handler install.
+    // Let the scheme layer find this webview's profile for handler install, and
+    // install the handlers before the first navigation: a `tauri://localhost`
+    // load issued earlier would be rejected for having no scheme handler.
     qt_scheme_bind_webview(id, view);
+    qt_scheme_install_handler(id);
 
     // Backstop: if the widget is destroyed behind our back, drop the handle.
     QObject::connect(view, &QObject::destroyed, view, [id]() { g_webviews.erase(id); });
@@ -134,6 +140,22 @@ void qt_webview_eval(uint64_t id, rust::Str script) {
     }
     // Default worldId = 0 (MainWorld), fire-and-forget (no result callback).
     e->view->page()->runJavaScript(to_qstring(script));
+}
+
+void qt_webview_add_init_script(uint64_t id, rust::Str script, bool main_frame_only) {
+    Entry* e = find_entry(id);
+    if (e == nullptr) {
+        return;
+    }
+    // Per-page collection; consumed by the next navigation, so this must run
+    // before the first load() for tauri's bootstrap scripts to see the page.
+    QWebEngineScript s;
+    s.setName(QStringLiteral("tauri_init_%1").arg(g_next_script_id++));
+    s.setSourceCode(to_qstring(script));
+    s.setInjectionPoint(QWebEngineScript::DocumentCreation);
+    s.setWorldId(QWebEngineScript::MainWorld);
+    s.setRunsOnSubFrames(!main_frame_only);
+    e->view->page()->scripts().insert(s);
 }
 
 void qt_webview_set_zoom(uint64_t id, double factor) {

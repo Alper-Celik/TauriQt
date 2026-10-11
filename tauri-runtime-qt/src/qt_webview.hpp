@@ -47,6 +47,14 @@ void qt_webview_reload(uint64_t id);
 /// Runs `script` in the page's main world (fire-and-forget, no result).
 void qt_webview_eval(uint64_t id, rust::Str script);
 
+/// Registers an initialization script for the view's page (tauri's `core.js`,
+/// `ipc.js`, ...). The script is injected at `DocumentCreation` into `MainWorld`
+/// on the *next* navigation, so it MUST be added before the first `load()` (i.e.
+/// before `qt_webview_navigate` / a non-empty URL in `qt_webview_create`).
+/// `main_frame_only == true` maps to `runsOnSubFrames(false)`; each call gets a
+/// unique script name. Unknown id -> no-op.
+void qt_webview_add_init_script(uint64_t id, rust::Str script, bool main_frame_only);
+
 /// Sets the page zoom factor (Qt clamps to 0.25 .. 5.0).
 void qt_webview_set_zoom(uint64_t id, double factor);
 

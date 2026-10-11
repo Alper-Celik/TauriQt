@@ -21,14 +21,24 @@
     <p id="result">calling invoke('greet') …</p>
     <script>
       const out = document.getElementById("result");
-      window.__TAURI_INTERNALS__
-        .invoke("greet", { name: "Qt" })
-        .then((msg) => {
-          out.textContent = msg;
-        })
-        .catch((err) => {
-          out.textContent = "invoke failed: " + err;
-        });
+      // Titles are surfaced to the runtime as events, so they double as a
+      // terminal-visible probe while the IPC path is being brought up.
+      if (typeof window.__TAURI_INTERNALS__ === "undefined") {
+        document.title = "NO_INTERNALS";
+        out.textContent = "window.__TAURI_INTERNALS__ is undefined";
+      } else {
+        document.title = "HAS_INTERNALS";
+        window.__TAURI_INTERNALS__
+          .invoke("greet", { name: "Qt" })
+          .then((msg) => {
+            document.title = "INVOKE_OK";
+            out.textContent = msg;
+          })
+          .catch((err) => {
+            document.title = "INVOKE_FAILED";
+            out.textContent = "invoke failed: " + err;
+          });
+      }
     </script>
   </body>
 </html>

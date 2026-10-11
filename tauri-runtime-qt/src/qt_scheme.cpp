@@ -10,10 +10,15 @@
 
 #include "qt_scheme.hpp"
 
+#include <cstdio>
+
+
 // The cxx bridge declares the Rust callback `qt_scheme_request` and the
 // `::QtSchemeResponse` struct (with the correct linkage). Never hand-declare
 // them here; include the generated header instead.
 #include "tauri-runtime-qt/src/qt.rs.h"
+
+#include <cstdio>
 
 #include <QtCore/QBuffer>
 #include <QtCore/QByteArray>
@@ -101,6 +106,88 @@ QByteArray serializeRequestHeaders(QWebEngineUrlRequestJob* job) {
     return out;
 }
 
+// A request whose response Tauri will deliver asynchronously (a later call to
+// `qt_scheme_respond`). Keyed by the request id passed to `qt_scheme_request`.
+struct PendingRequest {
+    QPointer<QWebEngineUrlRequestJob> job;
+    std::uint64_t webview_id = 0;
+};
+
+QHash<std::uint64_t, PendingRequest>& pendingRequests() {
+    static QHash<std::uint64_t, PendingRequest> requests;
+    return requests;
+}
+
+std::uint64_t nextRequestId() {
+    static std::uint64_t next = 0;
+    return ++next;
+}
+
+// Process-wide QObject on the GUI thread used as the receiver context for
+// marshalling async responses. Created on the GUI thread (first call is from
+// `requestStarted`).
+QObject* dispatchContext() {
+    static QObject* context = nullptr;
+    if (context == nullptr) {
+        context = new QObject();
+    }
+    return context;
+}
+
+// Applies a complete response to a job: every header through
+// `setAdditionalResponseHeaders`, `Content-Type` (or `application/json`) as the
+// reply mime, and the body through a `QBuffer` parented to the job so the web
+// engine's cross-thread reads stay valid and nothing leaks.
+void applyResponse(QWebEngineUrlRequestJob* job, std::int32_t status,
+                   const QByteArray& rawHeaders, const QByteArray& body) {
+    if (job == nullptr) {
+        return;
+    }
+    const QList<QPair<QByteArray, QByteArray>> headers = parseHeaderList(rawHeaders);
+
+    QByteArray contentType;
+    QByteArray location;
+    bool hasExposeHeaders = false;
+    QMultiMap<QByteArray, QByteArray> additional;
+
+    for (const QPair<QByteArray, QByteArray>& header : headers) {
+        if (header.first.compare("Content-Type", Qt::CaseInsensitive) == 0) {
+            if (contentType.isEmpty()) {
+                contentType = header.second;
+            }
+            continue; // passed to reply() instead
+        }
+        if (header.first.compare("Access-Control-Expose-Headers", Qt::CaseInsensitive) == 0) {
+            hasExposeHeaders = true;
+        } else if (header.first.compare("Location", Qt::CaseInsensitive) == 0) {
+            location = header.second;
+        }
+        additional.insert(header.first, header.second);
+    }
+
+    // Qt's job API has no HTTP status setter; a redirect is the only
+    // status-driven behaviour we can honour. Everything else (including Tauri's
+    // 500 error responses) is delivered as a body + headers.
+    if (status >= 300 && status < 400 && !location.isEmpty()) {
+        job->redirect(QUrl(QString::fromUtf8(location)));
+        return;
+    }
+
+    // Tauri's JS reads `Tauri-Response` (and keys off `Content-Type`); both must
+    // be exposed across the CORS boundary.
+    if (!hasExposeHeaders) {
+        additional.insert(QByteArrayLiteral("Access-Control-Expose-Headers"),
+                          QByteArrayLiteral("Tauri-Response, Content-Type"));
+    }
+
+    auto* device = new QBuffer(job); // parented to the job: freed with it
+    device->setData(body);
+    device->open(QIODevice::ReadOnly);
+
+    job->setAdditionalResponseHeaders(additional);
+    job->reply(contentType.isEmpty() ? QByteArrayLiteral("application/json") : contentType, device);
+}
+
 // One `QWebEngineUrlSchemeHandler` per scheme; forwards every request to Rust.
 class TauriSchemeHandler final : public QWebEngineUrlSchemeHandler {
 public:
@@ -118,7 +205,7 @@ private:
 //
 // Created on the GUI thread from `requestStarted` and parented to the job, so
 // `job->destroyed` tears it down and any still-queued work becomes a no-op. The
-// reply `QIODevice` is likewise parented to the job (see `writeResponse`): the
+// reply `QIODevice` is likewise parented to the job (see `applyResponse`): the
 // web engine may read the device on another thread until the job is deleted, and
 // a job child is exactly as long-lived as the job.
 class JobContext final : public QObject {
@@ -130,15 +217,16 @@ public:
         headers_ = serializeRequestHeaders(job);
     }
 
-    // Reads whatever request body is already available and dispatches. If the
-    // body device only delivers data via `readyRead`, accumulate it and dispatch
-    // once the device has drained; a zero-delay fallback guarantees the request
-    // is never left unanswered (an empty body is valid for Tauri).
+    // Collects the full request body before dispatching. `job->requestBody()`
+    // is a sequential device whose data may arrive after `requestStarted`, so
+    // the body is accumulated on `readyRead` and the dispatch is driven by
+    // `readChannelFinished` (the reliable "body complete" signal), never with a
+    // partial body.
     void start() {
         QIODevice* body = job_ ? job_->requestBody() : nullptr;
         // Only POST carries a body Tauri reads; every other method (the
         // `tauri://`/`asset://` GET loads, OPTIONS preflights) can be dispatched
-        // right away without waiting on the body device.
+        // right away.
         if (body == nullptr || method_ != QByteArrayLiteral("POST")) {
             if (body != nullptr) {
                 bodyData_ += body->readAll();
@@ -146,26 +234,69 @@ public:
             dispatch();
             return;
         }
+
         body_ = body;
-        if (body_->bytesAvailable() > 0) {
-            bodyData_ += body_->readAll();
-            dispatch();
-            return;
-        }
+        bodyData_ += body_->readAll();
+
+        // Dump whatever arrived into the accumulator; never dispatch a partial
+        // body here (only the end-of-stream cases below may).
         QObject::connect(body_, &QIODevice::readyRead, this, [this]() {
-            if (body_ == nullptr || dispatched_) {
+            if (dispatched_ || body_ == nullptr) {
                 return;
             }
-            const QByteArray chunk = body_->readAll();
-            if (chunk.isEmpty()) {
-                return;
-            }
-            bodyData_ += chunk;
-            if (body_->bytesAvailable() == 0) {
+            bodyData_ += body_->readAll();
+            if (body_->atEnd() || (body_->bytesAvailable() == 0 && !body_->isSequential())) {
                 dispatch();
             }
         });
-        QMetaObject::invokeMethod(this, [this]() { dispatch(); }, Qt::QueuedConnection);
+        // Qt's "input stream closed" signal: for the custom-scheme POST body
+        // device this fires once the whole body is available.
+        QObject::connect(body_, &QIODevice::readChannelFinished, this, [this]() {
+            if (dispatched_ || body_ == nullptr) {
+                return;
+            }
+            bodyData_ += body_->readAll();
+            dispatch();
+        });
+
+        // Already fully buffered when we looked (Chromium usually delivers
+        // custom-scheme POST bodies this way): dispatch right away.
+        if (!body_->isSequential() && (body_->atEnd() || body_->bytesAvailable() == 0)) {
+            dispatch();
+            return;
+        }
+
+        // QtWebEngine 6.11 hands over an already-ended, empty device for
+        // custom-scheme POSTs (the invoke payload travels in the
+        // `X-Tauriqt-Payload` header instead), so an empty device dispatches at
+        // once; non-empty devices are accumulated to completion.
+        if (body_->atEnd() || (body_->bytesAvailable() == 0 && !body_->isSequential())) {
+            dispatch();
+            return;
+        }
+
+        QObject::connect(body_, &QIODevice::readyRead, this, [this]() {
+            if (dispatched_ || body_ == nullptr) {
+                return;
+            }
+            bodyData_ += body_->readAll();
+            if (body_->atEnd() || (body_->bytesAvailable() == 0 && !body_->isSequential())) {
+                dispatch();
+            }
+        });
+        QObject::connect(body_, &QIODevice::readChannelFinished, this, [this]() {
+            if (dispatched_ || body_ == nullptr) {
+                return;
+            }
+            bodyData_ += body_->readAll();
+            dispatch();
+        });
+        // Safety net: never leave a request unanswered.
+        QMetaObject::invokeMethod(this, [this]() {
+            if (!dispatched_ && bodyData_.isEmpty()) {
+                dispatch();
+            }
+        }, Qt::QueuedConnection);
     }
 
 private:
@@ -178,76 +309,37 @@ private:
             return;
         }
 
+        const std::uint64_t request_id = nextRequestId();
         const QByteArray urlBytes = url_.toString(QUrl::FullyEncoded).toUtf8();
         const ::QtSchemeResponse response = qt_scheme_request(
             webview_id_,
+            request_id,
             kind_,
             rust::Str(method_.constData(), static_cast<std::size_t>(method_.size())),
             rust::Str(urlBytes.constData(), static_cast<std::size_t>(urlBytes.size())),
             rust::Str(headers_.constData(), static_cast<std::size_t>(headers_.size())),
             rust::Str(bodyData_.constData(), static_cast<std::size_t>(bodyData_.size())));
 
+        if (response.handled == 2) {
+            // Tauri answered asynchronously: keep the job alive and wait for a
+            // later `qt_scheme_respond(request_id, ...)`. Drop the entry if the
+            // job is destroyed first (aborted request).
+            PendingRequest pending;
+            pending.job = job_;
+            pending.webview_id = webview_id_;
+            pendingRequests().insert(request_id, pending);
+            QObject::connect(job_, &QObject::destroyed, dispatchContext(),
+                             [request_id]() { pendingRequests().remove(request_id); });
+            return;
+        }
         if (response.handled != 1) {
             job_->fail(QWebEngineUrlRequestJob::UrlNotFound);
             return;
         }
-        writeResponse(response);
-    }
-
-    void writeResponse(const ::QtSchemeResponse& response) {
-        if (!job_) {
-            return;
-        }
-        const QByteArray rawHeaders(response.headers.data(),
-                                    static_cast<int>(response.headers.size()));
-        const QList<QPair<QByteArray, QByteArray>> headers = parseHeaderList(rawHeaders);
-
-        QByteArray contentType;
-        QByteArray location;
-        bool hasExposeHeaders = false;
-        bool hasTauriResponse = false;
-        QMultiMap<QByteArray, QByteArray> additional;
-
-        for (const QPair<QByteArray, QByteArray>& header : headers) {
-            if (header.first.compare("Content-Type", Qt::CaseInsensitive) == 0) {
-                if (contentType.isEmpty()) {
-                    contentType = header.second;
-                }
-                continue; // passed to reply() instead
-            }
-            if (header.first.compare("Access-Control-Expose-Headers", Qt::CaseInsensitive) == 0) {
-                hasExposeHeaders = true;
-            } else if (header.first.compare("Tauri-Response", Qt::CaseInsensitive) == 0) {
-                hasTauriResponse = true;
-            } else if (header.first.compare("Location", Qt::CaseInsensitive) == 0) {
-                location = header.second;
-            }
-            additional.insert(header.first, header.second);
-        }
-
-        // Qt's job API has no HTTP status setter; a redirect is the only
-        // status-driven behaviour we can honour. Everything else (including
-        // Tauri's 500 error responses) is delivered as a body + headers.
-        if (response.status >= 300 && response.status < 400 && !location.isEmpty()) {
-            job_->redirect(QUrl(QString::fromUtf8(location)));
-            return;
-        }
-
-        // Tauri's JS reads `Tauri-Response` to pick callback vs error; make sure
-        // it is exposed across the CORS boundary.
-        if (hasTauriResponse && !hasExposeHeaders) {
-            additional.insert(QByteArrayLiteral("Access-Control-Expose-Headers"),
-                              QByteArrayLiteral("Tauri-Response"));
-        }
-
-        const QByteArray body(response.body.data(), static_cast<int>(response.body.size()));
-        auto* device = new QBuffer(job_); // parented to the job: freed with it
-        device->setData(body);
-        device->open(QIODevice::ReadOnly);
-
-        job_->setAdditionalResponseHeaders(additional);
-        job_->reply(contentType.isEmpty() ? QByteArrayLiteral("application/octet-stream") : contentType,
-                    device);
+        applyResponse(job_, response.status,
+                      QByteArray(response.headers.data(),
+                                 static_cast<int>(response.headers.size())),
+                      QByteArray(response.body.data(), static_cast<int>(response.body.size())));
     }
 
     QPointer<QWebEngineUrlRequestJob> job_;
@@ -265,6 +357,7 @@ void TauriSchemeHandler::requestStarted(QWebEngineUrlRequestJob* job) {
     if (job == nullptr) {
         return;
     }
+    (void)dispatchContext(); // created here, on the GUI thread
     (new JobContext(job, kind_, webview_id_))->start();
 }
 
@@ -327,4 +420,30 @@ void qt_scheme_install_handler(std::uint64_t webview_id) {
     }
     QWebEnginePage* page = view->page();
     installOnProfile(page != nullptr ? page->profile() : nullptr, webview_id);
+}
+
+void qt_scheme_respond(std::uint64_t request_id, std::int32_t status,
+                       rust::Str headers, rust::Str body) {
+    // Copy out of the Rust-borrowed strings before marshalling (the borrowed
+    // memory is not valid once this call returns).
+    const QByteArray rawHeaders(headers.data(), static_cast<int>(headers.size()));
+    const QByteArray rawBody(body.data(), static_cast<int>(body.size()));
+
+    // The responder may fire on any thread; always deliver on the GUI thread,
+    // where the job and its reply device live.
+    QMetaObject::invokeMethod(
+        dispatchContext(),
+        [request_id, status, rawHeaders, rawBody]() {
+            const auto it = pendingRequests().find(request_id);
+            if (it == pendingRequests().end()) {
+                return; // already answered, or the job was destroyed
+            }
+            QWebEngineUrlRequestJob* job = it.value().job.data();
+            pendingRequests().erase(it);
+            if (job == nullptr) {
+                return;
+            }
+            applyResponse(job, status, rawHeaders, rawBody);
+        },
+        Qt::QueuedConnection);
 }

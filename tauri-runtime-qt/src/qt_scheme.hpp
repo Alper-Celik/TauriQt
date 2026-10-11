@@ -5,6 +5,8 @@
 
 #include <cstdint>
 
+#include <rust/cxx.h>
+
 class QWebEngineView;
 
 /// Registers the `ipc`, `tauri` and `asset` custom URL schemes.
@@ -25,3 +27,11 @@ void qt_scheme_bind_webview(std::uint64_t webview_id, QWebEngineView* view);
 /// Must be called on the GUI thread after the webview exists. Requests are routed
 /// to Rust through the `qt_scheme_request` callback declared by the cxx bridge.
 void qt_scheme_install_handler(std::uint64_t webview_id);
+
+/// Completes a custom-scheme request whose response Tauri produced
+/// asynchronously (the `handled == 2` case returned by `qt_scheme_request`).
+/// `headers` is a `\n`-separated `k: v` list, exactly as on the request side.
+/// Safe to call from any thread: off-GUI-thread calls are marshalled to the GUI
+/// thread. Unknown/expired request ids are ignored.
+void qt_scheme_respond(std::uint64_t request_id, std::int32_t status,
+                       rust::Str headers, rust::Str body);

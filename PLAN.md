@@ -28,12 +28,22 @@ unhandled (the bridge call is synchronous); binary IPC bodies are carried as `st
 - cxx-qt 0.10 toolchain, nix flake (merged-Qt prefix + qmake shim, `QMAKE` pinned)
 - QtWebEngine renders on Wayland
 
-### M1 — IPC round-trip (core feasibility of the runtime)
-- `QWebEngineUrlScheme::registerScheme` for `ipc`, `tauri`, `asset` at startup
-  (flags: `SecureScheme | CorsEnabled | FetchApiAllowed`)
-- `QWebEngineUrlSchemeHandler` for `ipc://localhost/{cmd}` → Tauri command dispatch → response
-- Frontend: raw `fetch("ipc://localhost/greet")` (no tauri JS glue yet)
-- Exit criterion: Rust `greet(name)` returns "Hello, {name}!" in the page
+### M1 — IPC round-trip ✅
+- `QWebEngineUrlScheme::registerScheme` for `ipc`, `tauri`, `asset` before the
+  `QApplication` (flags: `SecureScheme | CorsEnabled | FetchApiAllowed`, `Syntax::Host`)
+- `QWebEngineUrlSchemeHandler` → cxx bridge → the `uri_scheme_protocols` tauri registers
+  per webview (handlers take the **webview label**, not the scheme name)
+- Async completion: tauri resolves protocols asynchronously, so a request may return
+  `handled == 2` (pending); C++ keeps the job alive under a `request_id` and Rust completes
+  it through `qt_scheme_respond`
+- **QtWebEngine never delivers custom-protocol POST bodies** (`requestBody()` is an
+  already-ended, empty sequential device — verified by probing at 0/50/200/500 ms). The
+  runtime therefore ships its own invoke system (`INVOKE_SYSTEM_SCRIPT`): the payload
+  travels base64-encoded in the `X-Tauriqt-Payload` header, and the runtime turns that
+  header back into the request body before tauri's IPC handler sees it. Payload size is
+  bounded by the engine's request-header limit (~256 KB) — chunking is future work.
+- Exit criterion met: `invoke("greet", { name: "Qt" })` → `ipc POST ipc://localhost/greet
+  -> 200` → `"Hello, Qt! — from linux"` rendered by the page (title `INVOKE_OK`)
 
 ### M2 — Frontend serving
 - `tauri://localhost` scheme serving the built frontend (`dist/`)

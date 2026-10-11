@@ -28,6 +28,17 @@ use tauri_utils::Theme;
 
 pub mod qt;
 
+/// Invoke system for this runtime.
+///
+/// QtWebEngine never delivers custom-protocol POST bodies, so tauri's default
+/// invoke system (payload in the request body) cannot work here. This script
+/// keeps the custom-protocol path but moves the payload into the
+/// `X-Tauriqt-Payload` header (base64), which the runtime turns back into the
+/// request body before dispatching to tauri's IPC handler.
+///
+/// Use it with `tauri::Builder::invoke_system(tauri_runtime_qt::INVOKE_SYSTEM_SCRIPT)`.
+pub const INVOKE_SYSTEM_SCRIPT: &str = include_str!("invoke_system.js");
+
 /// The Qt runtime. Constructed on the main thread; owns the `QApplication`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct QtRuntime;
@@ -94,8 +105,10 @@ type SchemeHandler = Box<
         + 'static,
 >;
 
-/// `uri_scheme_protocols` registered per native webview handle (scheme name → handler).
-static SCHEME_PROTOCOLS: Mutex<Vec<(u64, HashMap<String, SchemeHandler>)>> =
+/// Per native webview handle: its tauri label plus the `uri_scheme_protocols`
+/// tauri registered for it (scheme name → handler). Tauri's handlers take the
+/// webview *label*, not the scheme, as their first argument.
+static SCHEME_PROTOCOLS: Mutex<Vec<(u64, String, HashMap<String, SchemeHandler>)>> =
     Mutex::new(Vec::new());
 
 /// Creates the Qt window for a pending window and records its handle.
@@ -125,6 +138,8 @@ fn build_window<T: UserEvent>(
     }
     let id = WindowId::from(native as u32);
     NATIVE_WINDOWS.lock().push((id, native));
+    #[cfg(debug_assertions)]
+    eprintln!("[tauri-runtime-qt] window '{label}' created (native {native})");
     Ok((id, QtWindowDispatcher { native }))
 }
 
@@ -134,7 +149,10 @@ fn build_webview<T: UserEvent>(
     pending: PendingWebview<T, QtRuntime>,
 ) -> Result<DetachedWebview<T, QtRuntime>> {
     let label = pending.label.clone();
-    let native = qt::ffi::qt_webview_create(window_native, &pending.url);
+    let pending_url = pending.url.clone();
+    // Create the view without navigating, inject tauri's initialization scripts
+    // (they define `window.__TAURI_INTERNALS__`, i.e. `invoke`), then navigate.
+    let native = qt::ffi::qt_webview_create(window_native, "");
     if native == 0 {
         return Err(Error::CreateWebview(
             "qt_webview_create returned a null handle".into(),
@@ -143,8 +161,20 @@ fn build_webview<T: UserEvent>(
     qt::ffi::qt_window_attach_webview(window_native, qt::ffi::qt_webview_native_handle(native));
     SCHEME_PROTOCOLS
         .lock()
-        .push((native, pending.uri_scheme_protocols));
+        .push((native, label.clone(), pending.uri_scheme_protocols));
     qt::ffi::qt_scheme_install_handler(native);
+
+    for script in &pending.webview_attributes.initialization_scripts {
+        qt::ffi::qt_webview_add_init_script(native, &script.script, script.for_main_frame_only);
+    }
+    if !pending_url.is_empty() {
+        qt::ffi::qt_webview_navigate(native, &pending_url);
+    }
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[tauri-runtime-qt] webview '{label}' created in window {window_native} (native {native}), url {}",
+        pending_url
+    );
     Ok(DetachedWebview {
         label: label.clone(),
         dispatcher: QtWebviewDispatcher { native, label },
@@ -571,7 +601,11 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
     }
 
     fn run<F: FnMut(RunEvent<T>) + 'static>(self, mut callback: F) {
+        #[cfg(debug_assertions)]
+        eprintln!("[tauri-runtime-qt] run: emitting Ready");
         callback(RunEvent::Ready);
+        #[cfg(debug_assertions)]
+        eprintln!("[tauri-runtime-qt] run: entering Qt event loop");
         qt::ffi::qt_run();
         callback(RunEvent::Exit);
     }

@@ -10,6 +10,7 @@ edition = "2021"
 devtools = []
 
 [dependencies]
+base64 = "0.22"
 cxx = "1"
 http = "1"
 parking_lot = "0.12"

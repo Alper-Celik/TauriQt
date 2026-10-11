@@ -17,8 +17,17 @@ fn greet(name: &str) -> String {
 }
 
 fn main() {
-    tauri::Builder::<AppRuntime>::new()
-        .invoke_handler(tauri::generate_handler![greet])
+    let mut builder = tauri::Builder::<AppRuntime>::new()
+        .invoke_handler(tauri::generate_handler![greet]);
+
+    // The Qt runtime carries invoke payloads in a header (QtWebEngine never
+    // exposes custom-protocol request bodies), so it ships its own invoke system.
+    #[cfg(all(target_os = "linux", not(feature = "wry")))]
+    {
+        builder = builder.invoke_system(tauri_runtime_qt::INVOKE_SYSTEM_SCRIPT);
+    }
+
+    builder
         .run(tauri::generate_context!())
         .expect("error while running the tauri application");
 }

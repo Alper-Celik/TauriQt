@@ -11,9 +11,16 @@ fn main() {
     let qt = QtBuild::new(vec!["Widgets".to_owned(), "WebEngineWidgets".to_owned()])
         .expect("failed to locate a usable Qt installation (is QMAKE set?)");
 
+    let cpp_sources = [
+        "src/qt_app.cpp",
+        "src/qt_window.cpp",
+        "src/qt_webview.cpp",
+        "src/qt_scheme.cpp",
+    ];
+
     let mut build = cxx_build::bridge("src/qt.rs");
     build
-        .file("src/qt_app.cpp")
+        .files(cpp_sources)
         .include("src")
         .includes(qt.include_paths())
         .std("c++17");
@@ -21,6 +28,12 @@ fn main() {
     build.compile("tauri-runtime-qt-bridge");
 
     println!("cargo::rerun-if-changed=src/qt.rs");
-    println!("cargo::rerun-if-changed=src/qt_app.cpp");
     println!("cargo::rerun-if-changed=src/qt_app.hpp");
+    println!("cargo::rerun-if-changed=src/qt_app.cpp");
+    println!("cargo::rerun-if-changed=src/qt_window.hpp");
+    println!("cargo::rerun-if-changed=src/qt_window.cpp");
+    println!("cargo::rerun-if-changed=src/qt_webview.hpp");
+    println!("cargo::rerun-if-changed=src/qt_webview.cpp");
+    println!("cargo::rerun-if-changed=src/qt_scheme.hpp");
+    println!("cargo::rerun-if-changed=src/qt_scheme.cpp");
 }
