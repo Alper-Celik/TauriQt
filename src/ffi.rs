@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 #[cxx_qt::bridge]
-mod ffi {
+pub mod ffi {
+    #[namespace = ""]
     unsafe extern "C++" {
         include!("webview.hpp");
 
-        pub fn run_webview(url: &str) -> i32;
+        fn run_webview(url: &str) -> i32;
     }
 }

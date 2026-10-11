@@ -4,6 +4,6 @@
 mod ffi;
 
 fn main() {
-    let code = ffi::run_webview("https://www.google.com");
+    let code = ffi::ffi::run_webview("https://www.google.com");
     std::process::exit(code);
 }

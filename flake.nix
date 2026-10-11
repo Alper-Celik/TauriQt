@@ -64,6 +64,7 @@
           buildInputs = [
             pkgs.kdePackages.qtbase
             pkgs.kdePackages.qtwebengine
+            pkgs.libGL
           ];
 
           meta = with pkgs.lib; {
@@ -92,6 +93,7 @@
             pkgs.clippy
             pkgs.cmake
             pkgs.reuse
+            pkgs.libGL
             (qtMerged pkgs)
           ];
         };
