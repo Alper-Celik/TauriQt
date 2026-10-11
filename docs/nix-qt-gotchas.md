@@ -97,9 +97,48 @@ The prerequisite is **D-Bus**:
 - **fix:** start a session bus from `${dbus}/share/dbus-1/session.conf` and export
   `DBUS_SESSION_BUS_ADDRESS` before launching sway (what `checks.wayland-smoke` does).
 
-## 7. QtWebEngine under a headless compositor needs no extra flags
+## 7. QtWebEngine under a headless compositor needs no extra flags — but a *build sandbox* does
 
-Measured: with `WLR_BACKENDS=headless WLR_RENDERER=pixman`, QtWebEngine 6.11.2 renders and executes
-JS with **only** `--no-sandbox` — no `--disable-gpu`, no ozone switch. Harmless noise you can ignore:
+Measured on a normal session and in the agent sandbox (where `/dev/dri` exists but denies access):
+QtWebEngine 6.11.2 renders and executes JS under `WLR_BACKENDS=headless WLR_RENDERER=pixman` with
+**only** `--no-sandbox` — no `--disable-gpu`, no ozone switch. Harmless noise you can ignore:
 `MESA: error: Opening /dev/dri/card2 failed`, one `ContextResult::kTransientFailure:
 Failed to send GpuControl.CreateCommandBuffer.`, and a Chromium system-bus denial.
+
+Inside a **Nix build sandbox** the situation is different: there is no `/dev/dri` node *at all*, and
+QtWebEngine does not fall back — it aborts:
+
+```
+#7  qAbort()
+#8  qt_message()
+#9  QMessageLogger::fatal()
+#10 QtWebEngineCore::SurfaceFactoryQt::GetGLOzone()
+#11 gl::init::CreateGLContext()
+```
+
+The app dies before emitting a single trace line, so a harness reports "every expectation failed"
+(which is exactly how this was found). Fix, applied in the check environment
+(`harnessCheck` in `flake.nix`):
+
+```nix
+QTWEBENGINE_CHROMIUM_FLAGS = "--no-sandbox --disable-gpu --disable-gpu-compositing";
+LIBGL_ALWAYS_SOFTWARE = "1";
+QT_OPENGL = "software";
+```
+
+and the checks also provide `FONTCONFIG_FILE` (a build sandbox has no font database, and
+QtWebEngine wants one) plus writable `HOME`/`XDG_*`.
+
+## 8. `#!/usr/bin/env` does not exist inside a Nix build
+
+A script that executes a sibling *by path* dies with `bad interpreter: No such file or directory`,
+because the sandbox has no `/usr/bin/env`. Keep the ergonomic shebang for humans, but invoke
+siblings through the running interpreter:
+
+```bash
+BASH_BIN="${BASH:-bash}"
+"$BASH_BIN" "$SELF_DIR/other-script.sh" start
+```
+
+Related: a failed command substitution under `set -u` can hide the real error behind
+`unbound variable`; read such variables with `"${VAR:-}"` and fail with a clear message.

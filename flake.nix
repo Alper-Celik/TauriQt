@@ -124,6 +124,14 @@
 
             # QtWebEngine needs a fontconfig database; a build sandbox has none.
             FONTCONFIG_FILE = pkgs.makeFontsConf { fontDirectories = [ pkgs.dejavu_fonts ]; };
+
+            # A Nix build sandbox has no /dev/dri and no GL at all, and QtWebEngine
+            # aborts (qFatal in SurfaceFactoryQt::GetGLOzone) instead of falling
+            # back the way it does when a DRM node merely denies access. Force the
+            # software path explicitly; rendering is unaffected for our purposes.
+            QTWEBENGINE_CHROMIUM_FLAGS = "--no-sandbox --disable-gpu --disable-gpu-compositing";
+            LIBGL_ALWAYS_SOFTWARE = "1";
+            QT_OPENGL = "software";
           } // extraEnv)
           ''
             set -eu
