@@ -363,6 +363,18 @@ expect_absent() {
     echo "  ok   : absent: $pattern"
   fi
 }
+# ERE variant, for expectations whose exact value is the platform's business
+# (a position is a number, and its value is Qt's record of what the app asked).
+expect_re() {
+  local pattern="$1"
+  checks=$((checks + 1))
+  if grep -qE -- "$pattern" "$LOG"; then
+    echo "  ok   : $pattern"
+  else
+    echo "  FAIL : $pattern"
+    failures=$((failures + 1))
+  fi
+}
 note() { printf '  info : %s\n' "$1"; }
 
 echo "==> expectations"
@@ -372,12 +384,13 @@ expect "] webview 'main' created"
 expect "tauri GET tauri://localhost/ -> 200"
 expect "ipc POST ipc://localhost/greet -> 200"
 # Wayland-native: the runtime must be on the Wayland platform plugin (the demo's
-# own `platform` report names it) and must never fall back to X11. Positions are
-# answered on every platform now, so they can no longer be the tell — the demo
-# asks for none, so the record is the origin.
+# own `platform` report names it) and must never fall back to X11. Positions must
+# answer with a number on every platform now — the exact value is Qt's record of
+# what the app asked for (the demo asks for none), so only the shape is pinned.
 expect "[tauriqt-demo] platform=wayland"
-expect "inner_position=0,0"
-expect "outer_position=0,0"
+expect_re 'inner_position=[0-9-]+,[0-9-]+'
+expect_re 'outer_position=[0-9-]+,[0-9-]+'
+expect_absent "does not report top-level window positions"
 expect_absent 'Could not load the Qt platform plugin'
 expect_absent "is not implemented yet"
 

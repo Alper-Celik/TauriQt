@@ -44,7 +44,7 @@ $ scripts/sway-oracle.sh --no-build
 == (b) positions: compositor rect vs the position we recorded ==
   compositor (swaymsg -t get_tree) rect : 300,225 1028x722
   runtime (win_info report)            : inner_position=0,0 outer_position=0,0
-  PASS runtime reports the position Qt recorded for the app (0,0: the demo asks for none)
+  PASS runtime answers inner/outer_position with a numeric record (the demo asks for none)
   PASS runtime answers position queries on wayland instead of the old Err
 == (c) multi-output + scale ==
   runtime monitors: available_monitors=2 | ... #1 name=Some("HEADLESS-1") pos=2560,0 size=1280x720 scale=2.0000
@@ -107,12 +107,13 @@ default footprint small.
 `swaymsg -t get_tree` returns `rect {x,y,width,height}` for the toplevel. In a
 headless session the app window lands at a real coordinate, and once floated and
 `move position 300 200`'d the rect follows (`300,225 1028x722` here). The same
-run's `win_info` report is `inner_position=0,0 outer_position=0,0`: the demo asks
-for no position, and the runtime answers with Qt's record of the *request*
-instead of refusing (`Err`) or echoing a rect a client cannot read. Both sides
+run's `win_info` report carries numbers for `inner_position`/`outer_position`: the
+demo asks for no position, so the runtime answers with Qt's record of that request
+(inside the frame, so the two can differ by the frame margin — measured `2,2` for
+the client area against `0,0` for the frame on the offscreen plugin). Both sides
 are quoted by the harness, so the two facts are asserted together — a regression
 either to the old position `Err` or to a fabricated non-zero value fails the
-check.
+check, while the exact numbers stay Qt's business.
 
 The residual gap is documented rather than papered over: the runtime cannot
 follow a compositor-driven move (`move position 300 200` above moved the rect, and

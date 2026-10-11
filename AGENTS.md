@@ -73,4 +73,12 @@ fight the tooling.
   harnesses assert on (debug builds always do). `TAURIQT_EXIT_AFTER_MS` exits the app cleanly
   so an llvm profile flushes rather than being killed.
 - The demo grades itself: it writes `DEMO_OK` / `DEMO_PARTIAL…` as the window title and the
-  harnesses read it. Wayland's by-design gaps are excluded via `tauri_runtime_qt::platform_name()`.
+  harnesses read it, and it reports `platform_name()` alongside, so a harness can tell which
+  platform produced a verdict.
+- **Never make a position getter fail on Wayland.** `inner_position`/`outer_position` answer
+  with Qt's record of the requested value on every platform, because callers treat a position
+  as always available: `tauri-plugin-window-state`'s startup restore aborts on the first
+  `Err`, and with it goes the only thing that maps the window on Linux for apps that create it
+  hidden (Readest did exactly that — integrations/readest/README.md, "The hidden main window").
+  Placement itself is the compositor's: `set_position` only records on Wayland, and the
+  stacking hints are what get refused there.

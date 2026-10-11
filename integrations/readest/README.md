@@ -119,6 +119,33 @@ Playwright attach is limited to contexts/pages that already exist).
 | CDP battery on their page | 62 commands → 55 results, 7 errors (the known `Browser.getWindowForTarget/Bounds`, `printToPDF`, browser-context gaps), 0 timeouts; 1175 events recorded |
 | their wdio e2e | blocked by QtWebEngine's missing `Target.createTarget` (see above), not by the app or the port patch |
 
+## The hidden main window: what running it found
+
+Readest creates its main window **hidden** on Linux (`.visible(false)` on the non-macOS
+desktop builder in `apps/readest-app/src-tauri/src/lib.rs`) and maps it from the
+`window-themed` event — whose only listener is `#[cfg(windows)]`. On Linux the mapping
+therefore falls to `tauri-plugin-window-state`'s startup restore, which ends in
+`self.show()`, after querying `outer_position()?`, `is_maximized()?`, `is_visible()?`,
+`is_decorated()?` and `is_fullscreen()?`.
+
+While this runtime returned `Err` for `inner_position`/`outer_position` on every platform
+but xcb, that restore aborted at `outer_position` and nothing ever mapped the window: the
+app booted, the page loaded, CDP answered — and the compositor listed no window. The
+plugin's *save* path calls the same operation, so no `.window-state.json` was written
+either, and every launch repeated the abort.
+
+Proof, same binary, `plugin:window|is_visible` over CDP:
+
+| platform | `is_visible` at boot | window mapped |
+|---|---|---|
+| `xcb` (position queries answered) | `true` | yes |
+| `offscreen` / `wayland` (they were refused) | `false` | no |
+
+Positions are now answered with Qt's record of the request (`docs/wayland-ci.md`), which
+is what tao does there, so both plugin branches work: the first launch shows the window,
+and once a state file exists its restore path succeeds as well.
+`QT_QPA_PLATFORM=xcb` remains a local workaround for a build that predates the fix.
+
 ## Expectations
 
 - Readest exercises far more of the runtime than our demo: multiple windows, window-state

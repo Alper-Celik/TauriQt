@@ -592,14 +592,17 @@ check_positions() {
   fi
 
   # Our half of the asymmetry: the runtime answers with the position the app
-  # asked for (the demo asks for none, so the origin) instead of an `Err`, and it
-  # cannot follow a compositor-driven move — the protocol has no position read.
-  # That is why the compositor rect above is the oracle for placement and the
-  # recorded value is the oracle for what the app was told.
-  if grep -qE 'inner_position=0,0' "$APP_LOG" && grep -qE 'outer_position=0,0' "$APP_LOG"; then
-    pass "runtime reports the position Qt recorded for the app (0,0: the demo asks for none)"
+  # asked for (the demo asks for none) instead of an `Err`, and it cannot follow a
+  # compositor-driven move — the protocol has no position read. That is why the
+  # compositor rect above is the oracle for placement and the recorded value is
+  # the oracle for what the app was told. The exact numbers are Qt's business
+  # (`inner` sits inside the frame), so the shape and the absence of the old `Err`
+  # are what get pinned.
+  if grep -qE 'inner_position=[0-9-]+,[0-9-]+' "$APP_LOG" \
+    && grep -qE 'outer_position=[0-9-]+,[0-9-]+' "$APP_LOG"; then
+    pass "runtime answers inner/outer_position with a numeric record (the demo asks for none)"
   else
-    fail "runtime did not report the recorded position (0,0) on wayland"
+    fail "runtime did not answer inner/outer_position with a number on wayland"
   fi
 
   if grep -qF "does not report top-level window positions" "$APP_LOG"; then

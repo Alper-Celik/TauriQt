@@ -111,7 +111,7 @@ and print their results to the terminal via `report`:
 | `report` | `println!` breadcrumb channel for the page |
 | `cookie_sandbox_url` / `cookies_dump` | cookie mirror, `cookies_for_url` |
 | `cookie_set` / `cookie_delete` / `cookies_clear` | `set_cookie`, `delete_cookie`, `clear_all_browsing_data` |
-| `platform` | `platform_name()` — lets the page treat Wayland's by-design gaps as expected |
+| `platform` | `platform_name()` — which Qt platform plugin is running, reported with the verdict |
 
 Each probed method is reported independently: unsupported/unimplemented methods
 (delegates that still return `Err`, e.g. `unimplemented("WindowDispatch::…")` in
