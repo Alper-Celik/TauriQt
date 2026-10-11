@@ -83,7 +83,6 @@ pub(crate) fn available_monitors() -> Result<Vec<Monitor>> {
     ensure_ready()?;
     let monitors: Vec<Monitor> = ffi::qt_screen_monitors().iter().map(to_monitor).collect();
 
-    #[cfg(debug_assertions)]
     if std::env::var_os("TAURIQT_SCREEN_DEBUG").is_some() {
         eprintln!("[tauri-runtime-qt] available_monitors: {monitors:#?}");
     }

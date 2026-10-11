@@ -116,10 +116,7 @@ pub fn qt_on_window_event(id: u64, kind: i32, payload: &str) {
 /// `tauri_runtime::window::WebviewEvent` only has `DragDrop` in 2.12; page-load
 /// and title events must go through the handlers tauri puts on `PendingWebview`.
 pub fn qt_on_webview_event(id: u64, kind: i32, payload: &str) {
-    #[cfg(debug_assertions)]
-    eprintln!("[tauri-runtime-qt] webview {id} event {kind}: {payload}");
-    #[cfg(not(debug_assertions))]
-    let _ = (id, kind, payload);
+        crate::qtrace!("[tauri-runtime-qt] webview {id} event {kind}: {payload}");
 }
 
 fn unhandled() -> ffi::QtSchemeResponse {
@@ -141,8 +138,7 @@ pub fn qt_scheme_request(
     headers: &str,
     body: &str,
 ) -> ffi::QtSchemeResponse {
-    #[cfg(debug_assertions)]
-    eprintln!("[tauri-runtime-qt] scheme_request webview={webview_id} kind={scheme_kind} {method} {url}");
+        crate::qtrace!("[tauri-runtime-qt] scheme_request webview={webview_id} kind={scheme_kind} {method} {url}");
 
     let scheme = match scheme_kind {
         0 => "ipc",
@@ -188,8 +184,6 @@ pub fn qt_scheme_request(
     // The responder may outlive this call, so it must own its diagnostic text.
     let method_owned = method.to_owned();
     let url_owned = url.to_owned();
-    let immediate: std::sync::Arc<Mutex<Option<ffi::QtSchemeResponse>>> =
-        std::sync::Arc::new(Mutex::new(None));
 
     {
         let guard = crate::SCHEME_PROTOCOLS.lock();
@@ -209,13 +203,10 @@ pub fn qt_scheme_request(
             request,
             Box::new(move |response: http::Response<std::borrow::Cow<'static, [u8]>>| {
                 let (status, headers, body) = encode_response(response);
-                #[cfg(debug_assertions)]
-                eprintln!(
+                                crate::qtrace!(
                     "[tauri-runtime-qt] {scheme} {method_owned} {url_owned} -> {status} ({} body bytes)",
                     body.len()
                 );
-                #[cfg(not(debug_assertions))]
-                let _ = (&method_owned, &url_owned);
                 // If `qt_scheme_request` has not returned yet the response can
                 // travel back inline; otherwise it must be delivered through
                 // `qt_scheme_respond`, because this call outlived the bridge call.

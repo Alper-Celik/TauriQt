@@ -132,6 +132,11 @@
             QTWEBENGINE_CHROMIUM_FLAGS = "--no-sandbox --disable-gpu --disable-gpu-compositing";
             LIBGL_ALWAYS_SOFTWARE = "1";
             QT_OPENGL = "software";
+
+            # The harnesses assert on `[tauri-runtime-qt] …` lines, and the app
+            # under test here is a *release* build, so tracing must be opted into
+            # at runtime rather than compiled in.
+            TAURIQT_TRACE = "1";
           } // extraEnv)
           ''
             set -eu

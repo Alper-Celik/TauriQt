@@ -27,6 +27,7 @@ use tauri_utils::config::{Color, WindowConfig};
 use tauri_utils::Theme;
 
 pub mod bridge;
+pub mod trace;
 pub mod ops;
 pub mod qt;
 
@@ -140,8 +141,7 @@ fn build_window<T: UserEvent>(
     }
     let id = WindowId::from(native as u32);
     NATIVE_WINDOWS.lock().push((id, native));
-    #[cfg(debug_assertions)]
-    eprintln!("[tauri-runtime-qt] window '{label}' created (native {native})");
+        crate::qtrace!("[tauri-runtime-qt] window '{label}' created (native {native})");
     Ok((id, QtWindowDispatcher { native }))
 }
 
@@ -175,8 +175,7 @@ fn build_webview<T: UserEvent>(
     if !pending_url.is_empty() {
         bridge::webview::ffi::qt_webview_navigate(native, &pending_url);
     }
-    #[cfg(debug_assertions)]
-    eprintln!(
+        crate::qtrace!(
         "[tauri-runtime-qt] webview '{label}' created in window {window_native} (native {native}), url {}",
         pending_url
     );
@@ -617,8 +616,7 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
     }
 
     fn run<F: FnMut(RunEvent<T>) + 'static>(self, mut callback: F) {
-        #[cfg(debug_assertions)]
-        eprintln!("[tauri-runtime-qt] run: emitting Ready");
+                crate::qtrace!("[tauri-runtime-qt] run: emitting Ready");
         callback(RunEvent::Ready);
         let callback = std::rc::Rc::new(std::cell::RefCell::new(callback));
         let user_callback = std::rc::Rc::clone(&callback);
@@ -628,8 +626,7 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
             }
         }));
         ops::runtime::start_pump();
-        #[cfg(debug_assertions)]
-        eprintln!("[tauri-runtime-qt] run: entering Qt event loop");
+                crate::qtrace!("[tauri-runtime-qt] run: entering Qt event loop");
         qt::ffi::qt_run();
         callback.borrow_mut()(RunEvent::Exit);
     }

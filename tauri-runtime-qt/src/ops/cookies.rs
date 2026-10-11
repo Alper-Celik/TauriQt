@@ -242,8 +242,7 @@ pub(crate) fn register_webview(webview_id: u64, webview_ptr: u64) {
         mirror.cookies.insert(webview_id, HashMap::new());
     }
     ffi::qt_cookies_watch(webview_ptr);
-    #[cfg(debug_assertions)]
-    eprintln!(
+        crate::qtrace!(
         "[tauri-runtime-qt] cookie mirror watching webview {webview_id} (view {webview_ptr:#x})"
     );
 }
@@ -378,8 +377,7 @@ pub(crate) fn set_cookie(webview_id: u64, cookie: Cookie<'_>) -> Result<()> {
     let same_site = cookie.same_site();
     let expires_ms = expires_ms_of(&cookie);
 
-    #[cfg(debug_assertions)]
-    eprintln!(
+        crate::qtrace!(
         "[tauri-runtime-qt] set_cookie -> view {view_ptr:#x} name={name:?} value={value:?} domain={domain:?} path={path:?} secure={secure} http_only={http_only} same_site={} expires_ms={expires_ms}",
         same_site_code(same_site)
     );

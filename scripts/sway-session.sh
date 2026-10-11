@@ -44,6 +44,27 @@ BOOT_TIMEOUT="${TAURIQT_SWAY_BOOT_TIMEOUT:-25}"
 
 log() { printf 'sway-session: %s\n' "$*" >&2; }
 warn() { printf 'sway-session: warning: %s\n' "$*" >&2; }
+# nixpkgs' sway wrapper execs an *absolute* `dbus-run-session` when
+# DBUS_SESSION_BUS_ADDRESS is unset, and dbus-daemon's compiled-in config is the
+# FHS path /etc/dbus-1/session.conf — which a Nix build sandbox does not have, so
+# sway exits 127. Bring up a bus from the config shipped in the store instead.
+# On a normal desktop a bus already exists and this is a no-op.
+ensure_session_bus() {
+  [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && return 0
+  local daemon root conf
+  daemon="$(command -v dbus-daemon || true)"
+  [[ -n "$daemon" ]] || return 0
+  root="$(cd "$(dirname "$daemon")/.." && pwd)"
+  for conf in "$root/share/dbus-1/session.conf" /usr/share/dbus-1/session.conf; do
+    [[ -r "$conf" ]] || continue
+    if DBUS_SESSION_BUS_ADDRESS="$(dbus-daemon --session --fork --print-address --config-file="$conf")"; then
+      export DBUS_SESSION_BUS_ADDRESS
+      return 0
+    fi
+  done
+  return 0
+}
+
 die() {
   printf 'sway-session: error: %s\n' "$*" >&2
   exit 1
@@ -283,6 +304,7 @@ cmd_start() {
   local swaysock="$run/sway-ipc.sock"
   # The child writes its own pid (after exec it is sway's pid), which also
   # becomes the process-group id of the whole session.
+  ensure_session_bus
   env XDG_RUNTIME_DIR="$run" \
     SWAYSOCK="$swaysock" \
     WLR_BACKENDS=headless \

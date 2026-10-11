@@ -236,8 +236,7 @@ pub(crate) fn on_eval_result(request_id: u64, json: &str) {
     match callback {
         Some(callback) => callback(json.to_owned()),
         None => {
-            #[cfg(debug_assertions)]
-            eprintln!(
+                        crate::qtrace!(
                 "[tauri-runtime-qt] eval result for unknown/expired request {request_id} ({json})"
             );
         }

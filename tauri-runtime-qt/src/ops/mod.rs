@@ -16,7 +16,7 @@ pub mod screen;
 pub mod webview;
 pub mod window;
 
-use tauri_runtime::{Error, Result};
+use tauri_runtime::Error;
 
 /// The error every not-yet-implemented operation returns.
 pub fn unimplemented(what: &str) -> Error {

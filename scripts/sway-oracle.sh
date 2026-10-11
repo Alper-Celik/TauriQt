@@ -78,6 +78,27 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/tauriqt-oracle.XXXXXX")"
 FAILURES=0
 PASS_OUT=0
 
+# nixpkgs' sway wrapper execs an *absolute* `dbus-run-session` when
+# DBUS_SESSION_BUS_ADDRESS is unset, and dbus-daemon's compiled-in config is the
+# FHS path /etc/dbus-1/session.conf — which a Nix build sandbox does not have, so
+# sway exits 127. Bring up a bus from the config shipped in the store instead.
+# On a normal desktop a bus already exists and this is a no-op.
+ensure_session_bus() {
+  [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && return 0
+  local daemon root conf
+  daemon="$(command -v dbus-daemon || true)"
+  [[ -n "$daemon" ]] || return 0
+  root="$(cd "$(dirname "$daemon")/.." && pwd)"
+  for conf in "$root/share/dbus-1/session.conf" /usr/share/dbus-1/session.conf; do
+    [[ -r "$conf" ]] || continue
+    if DBUS_SESSION_BUS_ADDRESS="$(dbus-daemon --session --fork --print-address --config-file="$conf")"; then
+      export DBUS_SESSION_BUS_ADDRESS
+      return 0
+    fi
+  done
+  return 0
+}
+
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; PASS_OUT=$((PASS_OUT + 1)); }
 fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
 info() { printf '  info %s\n' "$1"; }
@@ -136,14 +157,20 @@ session_start() {
   SESS_SOCK="$SESS_XDG/sway-ipc.sock"
   SESS_LOG="$SESS_XDG/sway.log"
 
-  env -i \
-    PATH="$PATH" HOME="$HOME" \
-    XDG_RUNTIME_DIR="$SESS_XDG" \
-    SWAYSOCK="$SESS_SOCK" \
-    WLR_BACKENDS=headless \
-    WLR_RENDERER=pixman \
-    WLR_LIBINPUT_NO_DEVICES=1 \
-    WLR_HEADLESS_OUTPUTS="$outputs" \
+  # env -i: a curated environment, so the session bus must be listed explicitly
+  # (without it sway's wrapper falls into the dbus-run-session trap above).
+  local -a sway_env=(
+    PATH="$PATH" HOME="$HOME"
+    XDG_RUNTIME_DIR="$SESS_XDG"
+    SWAYSOCK="$SESS_SOCK"
+    WLR_BACKENDS=headless
+    WLR_RENDERER=pixman
+    WLR_LIBINPUT_NO_DEVICES=1
+    WLR_HEADLESS_OUTPUTS="$outputs"
+  )
+  [[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]] && sway_env+=(DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS")
+
+  env -i "${sway_env[@]}" \
     setsid "$SWAY_BIN/bin/sway" -c "$SESS_XDG/config" -d \
     >"$SESS_LOG" 2>&1 &
   SESS_PID=$!
@@ -481,6 +508,8 @@ check_x11_free() {
 }
 
 # ---- main -------------------------------------------------------------------
+
+ensure_session_bus
 
 section "preflight"
 if [[ -z "$SWAY_BIN" ]]; then

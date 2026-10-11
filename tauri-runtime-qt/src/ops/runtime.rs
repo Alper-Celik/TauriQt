@@ -138,8 +138,7 @@ where
 /// after `set_event_sink`.
 pub fn start_pump() {
     if !ffi::qt_runtime_start_pump() {
-        #[cfg(debug_assertions)]
-        eprintln!("[tauri-runtime-qt] start_pump: no QApplication yet, events stay queued");
+                crate::qtrace!("[tauri-runtime-qt] start_pump: no QApplication yet, events stay queued");
     }
     debug::fire_probe();
 }
