@@ -39,6 +39,9 @@ cd "$(dirname "$0")/.."
 
 SELF_DIR="$(pwd)/scripts"
 SESSION_TOOL="$SELF_DIR/sway-session.sh"
+# Invoke the sibling with the *running* interpreter: inside a Nix build sandbox
+# there is no /usr/bin/env, so executing it by path would die on its shebang.
+BASH_BIN="${BASH:-bash}"
 
 TIMEOUT="${WAYLAND_SMOKE_TIMEOUT:-${SMOKE_TIMEOUT:-60}}"
 export TAURIQT_SWAY_BOOT_TIMEOUT="${TAURIQT_SWAY_BOOT_TIMEOUT:-20}"
@@ -134,8 +137,8 @@ done
   printf 'wayland-smoke: --timeout must be a positive integer (got %s)\n' "$TIMEOUT" >&2
   exit 2
 }
-[[ -x "$SESSION_TOOL" ]] || {
-  printf 'wayland-smoke: missing executable %s\n' "$SESSION_TOOL" >&2
+[[ -r "$SESSION_TOOL" ]] || {
+  printf 'wayland-smoke: missing session tool %s\n' "$SESSION_TOOL" >&2
   exit 2
 }
 
@@ -188,7 +191,7 @@ cleanup() {
     kill -TERM -- "-$APP_GROUP" 2>/dev/null || true
   fi
   if [[ -n "$SESSION_ID" && "$KEEP_SESSION" != 1 ]]; then
-    "$SESSION_TOOL" stop "$SESSION_ID" >&2 || true
+    "$BASH_BIN" "$SESSION_TOOL" stop "$SESSION_ID" >&2 || true
   elif [[ -n "$SESSION_ID" ]]; then
     printf 'wayland-smoke: keeping session %s (%s)\n' "$SESSION_ID" "$XDG_RUNTIME_DIR" >&2
   fi
@@ -236,21 +239,25 @@ fi
 # ------------------------------------------------------------------- session
 
 echo "==> starting headless sway session (outputs=$OUTPUTS scale=$SCALE)"
-eval "$("$SESSION_TOOL" start --outputs "$OUTPUTS" --scale "$SCALE")"
-SESSION_ID="$TAURIQT_SWAY_SESSION"
+eval "$("$BASH_BIN" "$SESSION_TOOL" start --outputs "$OUTPUTS" --scale "$SCALE")"
+SESSION_ID="${TAURIQT_SWAY_SESSION:-}"
+[[ -n "$SESSION_ID" ]] || {
+  printf 'wayland-smoke: sway session did not start (no session id returned)\n' >&2
+  exit 1
+}
 echo "    session $SESSION_ID  wayland=$WAYLAND_DISPLAY  runtime=$XDG_RUNTIME_DIR"
-echo "    sway=$("$SESSION_TOOL" store sway)  grim=$("$SESSION_TOOL" store grim 2>/dev/null || echo 'unavailable')"
+echo "    sway=$("$BASH_BIN" "$SESSION_TOOL" store sway)  grim=$("$BASH_BIN" "$SESSION_TOOL" store grim 2>/dev/null || echo 'unavailable')"
 
 GRIM=""
 BASELINE=""
 if [[ -n "$SCREENSHOT" ]]; then
-  GRIM="$("$SESSION_TOOL" store grim 2>/dev/null)" || GRIM=""
+  GRIM="$("$BASH_BIN" "$SESSION_TOOL" store grim 2>/dev/null)" || GRIM=""
   [[ -x "$GRIM" ]] || {
     printf 'wayland-smoke: grim is unavailable; --screenshot needs it\n' >&2
     exit 2
   }
   BASELINE="${SCREENSHOT%.png}.baseline.png"
-  "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$BASELINE" >&2 ||
+  "$BASH_BIN" "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$BASELINE" >&2 ||
     printf 'wayland-smoke: baseline capture failed\n' >&2
 fi
 
@@ -318,7 +325,7 @@ done
 
 if [[ -n "$SCREENSHOT" ]]; then
   echo "==> capturing $SCREENSHOT"
-  "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$SCREENSHOT" >&2 ||
+  "$BASH_BIN" "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$SCREENSHOT" >&2 ||
     printf 'wayland-smoke: screenshot capture failed\n' >&2
 fi
 

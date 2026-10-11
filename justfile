@@ -78,13 +78,14 @@ test: test-smoke test-wayland test-oracle
 check name:
     nix build ".#checks.{{system}}.{{name}}" --no-link -L
 
-# run every flake check for this system
+# run every flake check for this system (--keep-going: one failure must not hide
+# the others; each check is an independent derivation, as in the CI matrix)
 check-all:
     nix build \
       ".#checks.{{system}}.smoke" \
       ".#checks.{{system}}.wayland-smoke" \
       ".#checks.{{system}}.sway-oracle" \
-      --no-link -L
+      --no-link -L --keep-going
 
 # evaluate every output (fast, no builds)
 check-eval:
