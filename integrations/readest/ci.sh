@@ -51,13 +51,20 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# Up to 30 min: the first build is a full link, and the app is a *grandchild*
+# of this script (run.sh -> tauri -> cargo -> Readest), so its pid is not a
+# liveness signal — a vanished $run_pid used to abort the wait while the app was
+# already serving. Only give up when no Readest process is left at all.
 ready=0
-for _ in $(seq 1 360); do                       # up to 30 min: first build is a full link
+for _ in $(seq 1 360); do
   if curl -sf "http://127.0.0.1:$CDP_PORT/json/list" 2>/dev/null | grep -q ':3000'; then
     ready=1
     break
   fi
-  kill -0 "$run_pid" 2>/dev/null || break
+  if ! pgrep -f 'target/debug/Readest' >/dev/null; then
+    sleep 5
+    pgrep -f 'target/debug/Readest' >/dev/null || break
+  fi
   sleep 5
 done
 if [[ "$ready" != "1" ]]; then
