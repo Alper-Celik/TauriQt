@@ -11,8 +11,8 @@
 //! Two items outside the stock trait surface exist for the app to use:
 //!
 //! - [`INVOKE_SYSTEM_SCRIPT`]: QtWebEngine never delivers custom-protocol POST
-//!   bodies, so the invoke payload travels in a header instead. Pass it with
-//!   [`tauri::Builder::invoke_system`].
+//!   bodies, so the invoke payload travels in a header instead. Pass it to
+//!   `tauri::Builder::invoke_system`.
 //! - [`platform_name`]: which Qt platform plugin is running (`"wayland"`,
 //!   `"xcb"`, `"offscreen"`, …), for apps that must adapt to platform gaps —
 //!   a Wayland toplevel has no global coordinates, so the position getters and
