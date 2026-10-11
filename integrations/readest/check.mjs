@@ -95,9 +95,15 @@ try {
 
 const targets = await httpJson('/json/list');
 const pages = targets.filter((t) => t.type === 'page');
-const page = pages.find((t) => (t.url ?? '').includes(args.urlSubstring)) ?? pages[0];
+const page = pages.find((t) => (t.url ?? '').includes(args.urlSubstring));
 if (!page) {
-  report('a page target exists', false, `${targets.length} targets: ${targets.map((t) => t.type).join(',')}`);
+  // Do not silently probe whatever target happens to be first: another browser
+  // (or an app instance that has not navigated yet) can own the port.
+  report(
+    `a page whose url contains "${args.urlSubstring}"`,
+    false,
+    `${pages.length} page target(s): ${pages.map((t) => t.url || '(none)').join(' ')}`,
+  );
   process.exit(1);
 }
 report('page target found', true, page.url);
