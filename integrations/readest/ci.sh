@@ -45,9 +45,14 @@ QTWEBENGINE_REMOTE_DEBUGGING="$CDP_PORT" READEST_CHECKOUT="$checkout" \
   setsid "$here/run.sh" >"$checkout/ci-run.log" 2>&1 &
 run_pid=$!
 cleanup() {
+  # The app is a grandchild (run.sh -> tauri -> cargo -> Readest) and `setsid`
+  # makes the tracked pid useless as a group to signal, so kill by pattern too:
+  # leaving the binary alive holds the DevTools port and breaks the next run.
   kill -- "-$run_pid" 2>/dev/null || kill "$run_pid" 2>/dev/null || true
   pkill -f 'tauri.js dev' 2>/dev/null || true
+  pkill -f 'target/debug/Readest' 2>/dev/null || true
   pkill -f 'next-server' 2>/dev/null || true
+  pkill -f 'next dev' 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
 
