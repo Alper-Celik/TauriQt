@@ -10,10 +10,23 @@ READEST_REPO="${READEST_REPO:-https://github.com/readest/readest}"
 READEST_SHA="${READEST_SHA:-385a322b8c1934375d02c50435b07c268d8ed3de}"
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-runtime="$(cd "$here/../.." && pwd)/tauri-runtime-qt"
-# Reuse an existing checkout with READEST_CHECKOUT (handy when its node deps
-# are already installed); the default is disposable and gitignored.
-checkout="${READEST_CHECKOUT:-$here/checkout}"
+repo="$(cd "$here/../.." && pwd)"
+runtime="$repo/tauri-runtime-qt"
+# Readest can be told where to land with READEST_CHECKOUT. The default is a
+# sibling of this repo, deliberately *outside* it: this repo is a cargo
+# workspace, and a checkout nested inside one makes cargo read Readest's
+# vendored tauri fork against our workspace root instead of its own (it then
+# fails with "workspace.package.edition was not defined"). The checkout also
+# needs several GB (node_modules + a Rust target dir), so it wants a roomy
+# filesystem.
+checkout="${READEST_CHECKOUT:-$(dirname "$repo")/readest-qt-checkout}"
+case "$(cd "$(dirname "$checkout")" 2>/dev/null && pwd)/" in
+  "$repo"/*)
+    echo "READEST_CHECKOUT must live outside this repo: $checkout is inside $repo" >&2
+    echo "(a checkout nested in a cargo workspace makes cargo resolve the wrong workspace root)" >&2
+    exit 1
+    ;;
+esac
 
 [[ -d "$runtime" ]] || { echo "no tauri-runtime-qt next to $here" >&2; exit 1; }
 

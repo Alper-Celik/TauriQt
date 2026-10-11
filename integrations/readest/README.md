@@ -24,11 +24,12 @@ frontend command silently fails to reach Rust.
 ## Running it
 
 ```bash
-# 1. patch a checkout (pinned commit; delete integrations/readest/checkout to redo)
+# 1. patch a checkout (pinned commit). Lands in ../readest-qt-checkout by
+#    default; READEST_CHECKOUT overrides, and it must NOT be inside this repo.
 integrations/readest/apply.sh
 
 # 2. frontend deps (once; ~2.5 min, needs network)
-cd integrations/readest/checkout
+cd ../readest-qt-checkout
 LD_LIBRARY_PATH= nix shell nixpkgs#pnpm_11 -c pnpm install --frozen-lockfile
 cd -
 
@@ -42,6 +43,15 @@ Readest's own `scripts/tauri.mjs`, which forces the `cef` runtime on Linux.
 
 An existing checkout can be reused instead of the disposable one:
 `READEST_CHECKOUT=/path/to/readest integrations/readest/apply.sh`.
+
+Two things the checkout's location must satisfy, both learned the hard way:
+
+- **Not inside this repo.** Our root is a cargo workspace, and a checkout nested in one
+  makes cargo resolve Readest's vendored tauri fork against *our* workspace root — the
+  build then dies with `workspace.package.edition was not defined`. `apply.sh` refuses
+  such a path outright.
+- **Several GB free.** It carries `node_modules` plus a Rust `target/` (thousands of
+  crates); a small filesystem fails mid-build with `No space left on device`.
 
 ## Driving tests
 
