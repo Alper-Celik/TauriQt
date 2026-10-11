@@ -26,6 +26,12 @@
 /// `Display*` available, 3 = Wayland.
 std::int32_t qt_runtime_platform_kind();
 
+/// Name of the platform plugin Qt is running on ("wayland", "xcb", "offscreen",
+/// …, or "" when no QGuiApplication exists). Lets an app adapt to platform
+/// limitations — on Wayland a toplevel has no global coordinates, so window
+/// positions are reported as errors by design.
+rust::String qt_runtime_platform_name();
+
 /// Native display connection of the platform plugin (`xcb_connection_t*` /
 /// `Display*` / `wl_display*`), 0 when there is no application or the platform
 /// is not handled. Safe from any thread (immutable platform state).

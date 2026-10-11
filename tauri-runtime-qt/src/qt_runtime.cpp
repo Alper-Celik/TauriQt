@@ -151,6 +151,13 @@ std::int32_t qt_runtime_platform_kind() {
     return platformConnection().kind;
 }
 
+rust::String qt_runtime_platform_name() {
+    if (QGuiApplication::instance() == nullptr) {
+        return rust::String();
+    }
+    return rust::String(QGuiApplication::platformName().toUtf8().constData());
+}
+
 std::uint64_t qt_runtime_display_pointer() {
     return platformConnection().pointer;
 }

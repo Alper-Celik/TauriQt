@@ -43,6 +43,10 @@ SESSION_TOOL="$SELF_DIR/sway-session.sh"
 # there is no /usr/bin/env, so executing it by path would die on its shebang.
 BASH_BIN="${BASH:-bash}"
 
+# The runtime's traces are the harness contract; ask for them even when
+# the binary under test is a release build.
+export TAURIQT_TRACE="${TAURIQT_TRACE:-1}"
+
 TIMEOUT="${WAYLAND_SMOKE_TIMEOUT:-${SMOKE_TIMEOUT:-60}}"
 export TAURIQT_SWAY_BOOT_TIMEOUT="${TAURIQT_SWAY_BOOT_TIMEOUT:-20}"
 OUTPUTS=1

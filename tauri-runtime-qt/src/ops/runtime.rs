@@ -210,6 +210,11 @@ enum NativePlatform {
     Wayland,
 }
 
+/// Name of the platform plugin Qt is running on ("wayland", "xcb", …).
+pub fn platform_name() -> String {
+    ffi::qt_runtime_platform_name()
+}
+
 fn native_platform() -> NativePlatform {
     match ffi::qt_runtime_platform_kind() {
         PLATFORM_XCB => NativePlatform::Xcb,

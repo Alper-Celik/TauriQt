@@ -78,6 +78,14 @@
           }
         }
 
+        // Some fields are *expected* to be unavailable on a given platform: a
+        // Wayland toplevel has no global coordinates, so the runtime reports
+        // window positions as errors by design. Filled in by main() (this scope
+        // is synchronous), so DEMO_OK means "every command that can work here
+        // worked" rather than needing a platform-specific exclusion list in the
+        // harnesses.
+        let unavailableByDesign = new Set();
+
         // Runs a command, tolerating and recording every rejection; returns the
         // raw value on success or null on failure.
         async function call(name, cmd, args) {
@@ -85,10 +93,13 @@
             const value = await invoke(cmd, args);
             const text = String(value);
             // `win_info` / `monitors` embed per-field errors rather than
-            // rejecting; surface those as partial failures too.
-            const errBits = [...text.matchAll(/[A-Za-z_]+=ERR\([^)]*\)/g)].map(
-              (m) => m[0],
-            );
+            // rejecting; surface those as partial failures too — except the
+            // fields this platform cannot provide by design.
+            const errBits = [
+              ...text.matchAll(/([A-Za-z_]+)=ERR\([^)]*\)/g),
+            ]
+              .filter((m) => !unavailableByDesign.has(m[1]))
+              .map((m) => m[0]);
             if (errBits.length > 0) {
               failures.push(`${name} -> ${errBits.join(", ")}`);
               render(name, text, false);
@@ -388,6 +399,21 @@
         }
 
         (async function main() {
+          try {
+            const platform = String(await invoke("platform"));
+            if (platform === "wayland") {
+              unavailableByDesign = new Set(["inner_position", "outer_position"]);
+            }
+            await report(
+              `platform=${platform}` +
+                (unavailableByDesign.size > 0
+                  ? ` (expected-unavailable: ${[...unavailableByDesign].join(", ")})`
+                  : ""),
+            );
+          } catch (err) {
+            await report(`platform: unavailable (${err})`);
+          }
+
           await call("greet", "greet", { name: "Qt" });
           await call("win_info", "win_info", {});
           await call("monitors", "monitors", {});

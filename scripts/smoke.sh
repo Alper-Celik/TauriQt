@@ -18,6 +18,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# The runtime's traces are the harness contract; ask for them even when
+# the binary under test is a release build.
+export TAURIQT_TRACE="${TAURIQT_TRACE:-1}"
+
 TIMEOUT="${SMOKE_TIMEOUT:-30}"
 EXPECT="${SMOKE_EXPECT:-DEMO_OK}"
 LOG="$(mktemp -t tauriqt-smoke.XXXXXX.log)"

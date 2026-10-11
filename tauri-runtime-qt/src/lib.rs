@@ -28,6 +28,16 @@ use tauri_utils::Theme;
 
 pub mod bridge;
 pub mod trace;
+
+/// Name of the platform plugin Qt is running on ("wayland", "xcb", "offscreen",
+/// …), or an empty string before the application exists.
+///
+/// Apps use this to adapt to platform limitations rather than guess: on Wayland
+/// a toplevel has no global coordinates, so `inner_position`/`outer_position`
+/// and `set_position` return errors by design (see `docs/nix-qt-gotchas.md`).
+pub fn platform_name() -> String {
+    ops::runtime::platform_name()
+}
 pub mod ops;
 pub mod qt;
 

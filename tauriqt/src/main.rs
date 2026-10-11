@@ -30,6 +30,22 @@ fn probe<T>(label: &str, result: tauri::Result<T>, render: impl FnOnce(T) -> Str
 /// every `is_*` flag. Each method is probed independently so one unsupported
 /// call does not hide the others.
 #[tauri::command]
+fn platform() -> String {
+    runtime_platform_name()
+}
+
+/// The Qt runtime knows its platform plugin; the wry fallback does not need to.
+#[cfg(all(target_os = "linux", not(feature = "wry")))]
+fn runtime_platform_name() -> String {
+    tauri_runtime_qt::platform_name()
+}
+
+#[cfg(any(not(target_os = "linux"), feature = "wry"))]
+fn runtime_platform_name() -> String {
+    "wry".to_owned()
+}
+
+#[tauri::command]
 fn win_info(window: tauri::WebviewWindow<AppRuntime>) -> String {
     let fields = [
         probe("inner_size", window.inner_size(), |s| {
@@ -400,8 +416,7 @@ fn cookies_clear(window: tauri::WebviewWindow<AppRuntime>) -> Result<String, Str
 }
 
 fn main() {
-    let mut builder = tauri::Builder::<AppRuntime>::new().invoke_handler(tauri::generate_handler![
-        greet,
+    let mut builder = tauri::Builder::<AppRuntime>::new().invoke_handler(tauri::generate_handler![greet,
         win_info,
         monitors,
         set_fullscreen,
@@ -411,8 +426,7 @@ fn main() {
         cookies_dump,
         cookie_set,
         cookie_delete,
-        cookies_clear
-    ]);
+        cookies_clear, platform]);
 
     // The Qt runtime carries invoke payloads in a header (QtWebEngine never
     // exposes custom-protocol request bodies), so it ships its own invoke system.

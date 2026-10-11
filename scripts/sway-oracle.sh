@@ -509,6 +509,8 @@ check_x11_free() {
 
 # ---- main -------------------------------------------------------------------
 
+export TAURIQT_TRACE="${TAURIQT_TRACE:-1}"
+
 ensure_session_bus
 
 section "preflight"

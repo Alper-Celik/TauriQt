@@ -22,6 +22,10 @@ pub mod ffi {
         /// Wayland.
         fn qt_runtime_platform_kind() -> i32;
 
+        /// Name of the platform plugin Qt runs on ("wayland", "xcb", …), empty
+        /// when there is no `QGuiApplication`.
+        fn qt_runtime_platform_name() -> String;
+
         /// Native display connection of the platform plugin
         /// (`xcb_connection_t*` / `Display*` / `wl_display*`), 0 when there is
         /// no application or the platform is not handled. Reads only state the
