@@ -314,6 +314,20 @@ app_tree() {
   '
 }
 
+# dump_tree <tag>: record what the compositor actually has, so a missing
+# toplevel says *which* windows exist (and what the app printed) instead of only
+# that the match failed.
+dump_tree() {
+  local tag="$1" file="$WORK/tree-$tag.json"
+  swaymsg -t get_tree -r >"$file" 2>/dev/null || true
+  echo "  info tree dump         : $file"
+  jq -r '[.. | objects | select(.shell? == "xdg_shell")
+          | "app_id=\(.app_id // "-") name=\(.name // "-") rect=\(.rect.width)x\(.rect.height)"] | .[]' \
+    "$file" 2>/dev/null | head -10 | sed 's/^/  info toplevel          : /'
+  echo "  info app log (first 5) :"
+  head -5 "$APP_LOG" 2>/dev/null | sed 's/^/  info   /'
+}
+
 # ---- check (a): state oracle ------------------------------------------------
 
 check_state_oracle() {
@@ -322,6 +336,7 @@ check_state_oracle() {
   local node
   node="$(app_tree)"
   if [[ -z "$node" || "$node" == "null" ]]; then
+    dump_tree app-not-found
     fail "compositor sees no xdg_shell toplevel for the app"
     return
   fi
@@ -452,6 +467,7 @@ check_positions() {
   if [[ -n "$rect" ]]; then
     pass "compositor reports a real rect"
   else
+    dump_tree positions-no-rect
     fail "compositor rect unavailable"
   fi
 
