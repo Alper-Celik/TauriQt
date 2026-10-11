@@ -4,40 +4,120 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>TauriQt — IPC smoke</title>
+    <title>TauriQt — runtime demo</title>
     <style>
       body {
         font-family: system-ui, sans-serif;
-        margin: 3rem;
+        margin: 2rem;
+      }
+      h1 {
+        margin-bottom: 0.25rem;
+      }
+      #summary {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0.5rem 0 1rem;
       }
       #result {
-        font-size: 1.5rem;
-        font-weight: 600;
+        font-family: ui-monospace, monospace;
+        font-size: 0.85rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .ok {
+        color: #0a7d28;
+      }
+      .bad {
+        color: #b3261e;
       }
     </style>
   </head>
   <body>
-    <h1>TauriQt</h1>
-    <p id="result">calling invoke('greet') …</p>
+    <h1>TauriQt runtime demo</h1>
+    <p id="summary">running …</p>
+    <div id="result"></div>
     <script>
-      const out = document.getElementById("result");
       // Titles are surfaced to the runtime as events, so they double as a
       // terminal-visible probe while the IPC path is being brought up.
+      const out = document.getElementById("result");
+      const summary = document.getElementById("summary");
+
       if (typeof window.__TAURI_INTERNALS__ === "undefined") {
         document.title = "NO_INTERNALS";
-        out.textContent = "window.__TAURI_INTERNALS__ is undefined";
+        summary.textContent = "window.__TAURI_INTERNALS__ is undefined";
+        summary.className = "bad";
       } else {
-        document.title = "HAS_INTERNALS";
-        window.__TAURI_INTERNALS__
-          .invoke("greet", { name: "Qt" })
-          .then((msg) => {
-            document.title = "INVOKE_OK";
-            out.textContent = msg;
-          })
-          .catch((err) => {
-            document.title = "INVOKE_FAILED";
-            out.textContent = "invoke failed: " + err;
-          });
+        const invoke = window.__TAURI_INTERNALS__.invoke;
+
+        // Every command result is echoed to the terminal through `report`, so a
+        // run can be audited from stdout alone.
+        const failures = [];
+
+        function render(name, text, ok) {
+          const line = document.createElement("div");
+          line.className = ok ? "ok" : "bad";
+          line.textContent = `${ok ? "OK  " : "FAIL"} ${name}: ${text}`;
+          out.appendChild(line);
+        }
+
+        async function report(text) {
+          try {
+            await invoke("report", { text });
+          } catch (err) {
+            // The report channel itself is broken; keep the page running and
+            // surface it once as a failure.
+            failures.push(`report -> ${err}`);
+          }
+        }
+
+        // Runs a command, tolerating and recording every rejection; returns the
+        // raw value on success or null on failure.
+        async function call(name, cmd, args) {
+          try {
+            const value = await invoke(cmd, args);
+            const text = String(value);
+            // `win_info` / `monitors` embed per-field errors rather than
+            // rejecting; surface those as partial failures too.
+            const errBits = [...text.matchAll(/[A-Za-z_]+=ERR\([^)]*\)/g)].map(
+              (m) => m[0],
+            );
+            if (errBits.length > 0) {
+              failures.push(`${name} -> ${errBits.join(", ")}`);
+              render(name, text, false);
+            } else {
+              render(name, text, true);
+            }
+            await report(`${name}: ${text}`);
+            return value;
+          } catch (err) {
+            failures.push(`${name} -> ${err}`);
+            render(name, String(err), false);
+            await report(`${name}: FAILED (${err})`);
+            return null;
+          }
+        }
+
+        (async function main() {
+          await call("greet", "greet", { name: "Qt" });
+          await call("win_info", "win_info", {});
+          await call("monitors", "monitors", {});
+          await call("set_title", "set_title", { title: "TauriQt — demo title" });
+          await call("fullscreen_on", "set_fullscreen", { fullscreen: true });
+          await call("win_info_after_fullscreen", "win_info", {});
+          await call("fullscreen_off", "set_fullscreen", { fullscreen: false });
+
+          if (failures.length === 0) {
+            document.title = "DEMO_OK";
+            summary.textContent = "DEMO_OK — every probed command succeeded";
+            summary.className = "ok";
+          } else {
+            document.title = "DEMO_PARTIAL: " + failures.join(" | ");
+            summary.textContent = `DEMO_PARTIAL — ${failures.length} failure(s)`;
+            summary.className = "bad";
+          }
+          await report(`title=${document.title}`);
+        })();
       }
     </script>
   </body>

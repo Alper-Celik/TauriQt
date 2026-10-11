@@ -10,6 +10,7 @@
 //! when it cannot answer *truthfully*. Never return a fabricated value (a made
 //! up `false`, `0` or empty string) — callers branch on these.
 
+pub mod cookies;
 pub mod runtime;
 pub mod screen;
 pub mod webview;

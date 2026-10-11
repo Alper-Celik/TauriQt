@@ -77,3 +77,32 @@ Full per-method inventory with Qt mappings and ✅/🔶/⛔ classification lives
 - LGPLv3 (QtWebEngine) → dynamic linking only; fine for local use, matters on distribution
 - Chromium sandbox on NixOS: verify outside agent sandbox (worked on real session for the
   sample; revisit if `QtWebEngineProcess` needs a wrapper)
+
+## Current coverage — runtime demo (`tauriqt` app)
+
+`tauriqt/src/main.rs` now registers five demo commands that exercise the runtime
+end-to-end and print their results to the terminal via `report`:
+
+| Command | Exercises |
+|---|---|
+| `win_info` | `inner_size`, `outer_size`, `inner_position`, `outer_position`, `scale_factor`, `title`, `is_fullscreen`, `is_minimized`, `is_maximized`, `is_focused`, `is_decorated`, `is_resizable`, `is_visible`, `is_always_on_top`, `is_maximizable`, `is_minimizable`, `is_closable` |
+| `monitors` | `available_monitors`, `primary_monitor`, `current_monitor` |
+| `set_fullscreen` | `WindowDispatch::set_fullscreen` |
+| `set_title` | `WindowDispatch::set_title` |
+| `report` | `println!` breadcrumb channel for the page |
+
+Each probed method is reported independently: unsupported/unimplemented methods
+(delegates that still return `Err`, e.g. `unimplemented("WindowDispatch::…")` in
+`src/ops/`) show up as `field=ERR(message)` inside the command's returned string,
+and rejected commands (`set_fullscreen`/`set_title` surface the runtime error as
+an invoke rejection) are caught by the page. The page sets
+`document.title = DEMO_OK` when nothing failed, otherwise
+`DEMO_PARTIAL: <failures>`; because titles are forwarded to the runtime as
+events, the outcome is visible in the terminal as
+`[tauri-runtime-qt] webview <n> event 4: DEMO_OK`.
+
+Snapshot of the still-`Err` delegates at the time this demo landed (parallel
+workers complete these; see `RUNTIME-TRAITS.md`): `ops/window.rs`
+geometry/state reads+`set_fullscreen`/`set_position`/…, `ops/screen.rs`
+monitor+cursor, `ops/webview.rs` bounds/position/size/focus/reparent/
+`clear_all_browsing_data`, `ops/runtime.rs` `send_event`/`request_exit`.

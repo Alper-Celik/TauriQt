@@ -124,3 +124,41 @@ Note: there is **no `WebviewBuilder` trait** — webview config rides
 - `Error` enum: `#[non_exhaustive]`, reuse existing variants; add `NotSupported` if absent
 - The webview widget must fill the window: `setCentralWidget`-equivalent; resize handled
   by Qt layout (no manual `SetWindowPos` dance like CEF on Windows)
+
+---
+
+## Demo coverage — wired vs. still `Err` (2026-10-11)
+
+The `tauriqt` app registers demo commands (`win_info`, `monitors`,
+`set_fullscreen`, `set_title`, `report`; see `PLAN.md` → "Current coverage").
+Their per-method outcome is the runtime's truth at this revision:
+
+**Wired (return real values / real effects).** `WindowDispatch::scale_factor`,
+`show`, `hide`, `close`, `destroy`, `set_title`, `set_size`, `center`,
+`set_decorations`, `set_maximized`, `is_visible`, plus the whole scheme/IPC +
+`WebviewDispatch::url`/`navigate`/`reload`/`eval_script` path.
+
+**Still `Err` (delegates to `ops::unimplemented(...)`).** In this worktree these
+are reported by the demo as `field=ERR(message)` and are being filled by the
+window/screen/webview/runtime workers in parallel:
+
+- `ops/window.rs`: `inner_size`, `outer_size`, `inner_position`,
+  `outer_position`, `title`, `theme`, `is_fullscreen`, `is_minimized`,
+  `is_maximized`, `is_focused`, `is_decorated`, `is_resizable`, `is_enabled`,
+  `is_always_on_top`, `set_fullscreen`, `minimize`, `unminimize`, `set_min_size`,
+  `set_max_size`, `set_size_constraints`, `set_icon`, `set_focus`,
+  `set_resizable`, `set_enabled`, `start_dragging`, `start_resize_dragging`,
+  `set_always_on_bottom`, `set_always_on_top`, `set_background_color`,
+  `set_position`.
+- `ops/screen.rs`: `available_monitors`, `primary_monitor`,
+  `monitor_from_point`, `monitor_for_window` (`current_monitor`),
+  `cursor_position`.
+- `ops/webview.rs`: `bounds`, `position`, `size`, `set_size`, `set_position`,
+  `set_focus`, `eval_script_with_callback`, `reparent`,
+  `clear_all_browsing_data`.
+- `ops/runtime.rs`: `EventLoopProxy::send_event`, `RuntimeHandle::request_exit`.
+
+Because the demo probes each getter independently and `set_fullscreen` /
+`set_title` surface failures as invoke rejections, the demo result line is a
+direct, non-fabricated coverage report at run time — it must only be updated as
+the corresponding `ops` delegates are implemented.

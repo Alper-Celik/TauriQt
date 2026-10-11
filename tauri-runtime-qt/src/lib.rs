@@ -160,11 +160,14 @@ fn build_webview<T: UserEvent>(
             "qt_webview_create returned a null handle".into(),
         ));
     }
-    bridge::window::ffi::qt_window_attach_webview(window_native, bridge::webview::ffi::qt_webview_native_handle(native));
+    let view_ptr = bridge::webview::ffi::qt_webview_native_handle(native);
+    bridge::window::ffi::qt_window_attach_webview(window_native, view_ptr);
     SCHEME_PROTOCOLS
         .lock()
         .push((native, label.clone(), pending.uri_scheme_protocols));
     qt::ffi::qt_scheme_install_handler(native);
+    // Mirror the profile's cookie store (Qt can only enumerate asynchronously).
+    ops::cookies::register_webview(native, view_ptr);
 
     for script in &pending.webview_attributes.initialization_scripts {
         bridge::webview::ffi::qt_webview_add_init_script(native, &script.script, script.for_main_frame_only);
@@ -721,22 +724,20 @@ impl<T: UserEvent> rt::WebviewDispatch<T> for QtWebviewDispatcher {
         ops::webview::reparent(self.native, window_native_of(window_id)?)
     }
 
-    fn cookies_for_url(&self, _url: url::Url) -> Result<Vec<Cookie<'static>>> {
-        // Deferred: Qt's cookie store is asynchronous with no completion signal
-        // (see PLAN-WORKERS.md, "W4 design note").
-        Err(ops::unimplemented("WebviewDispatch::cookies_for_url"))
+    fn cookies_for_url(&self, url: url::Url) -> Result<Vec<Cookie<'static>>> {
+        ops::cookies::cookies_for_url(self.native, &url)
     }
 
     fn cookies(&self) -> Result<Vec<Cookie<'static>>> {
-        Err(ops::unimplemented("WebviewDispatch::cookies"))
+        ops::cookies::cookies(self.native)
     }
 
-    fn set_cookie(&self, _cookie: cookie::Cookie<'_>) -> Result<()> {
-        Err(ops::unimplemented("WebviewDispatch::set_cookie"))
+    fn set_cookie(&self, cookie: cookie::Cookie<'_>) -> Result<()> {
+        ops::cookies::set_cookie(self.native, cookie)
     }
 
-    fn delete_cookie(&self, _cookie: cookie::Cookie<'_>) -> Result<()> {
-        Err(ops::unimplemented("WebviewDispatch::delete_cookie"))
+    fn delete_cookie(&self, cookie: cookie::Cookie<'_>) -> Result<()> {
+        ops::cookies::delete_cookie(self.native, cookie)
     }
 
     fn set_auto_resize(&self, _auto_resize: bool) -> Result<()> {
@@ -753,7 +754,7 @@ impl<T: UserEvent> rt::WebviewDispatch<T> for QtWebviewDispatcher {
     }
 
     fn clear_all_browsing_data(&self) -> Result<()> {
-        ops::webview::clear_all_browsing_data(self.native)
+        ops::cookies::clear_all_browsing_data(self.native)
     }
 }
 

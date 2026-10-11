@@ -3,6 +3,7 @@
 
 //! One cxx bridge per area, so each worker owns exactly one declaration file.
 
+pub mod cookies;
 pub mod runtime;
 pub mod screen;
 pub mod webview;
