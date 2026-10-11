@@ -59,7 +59,12 @@ echo "CDP on 127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING (try: curl -s http://127.0.
 cd "$app"
 # Readest's own CLI wrapper (scripts/tauri.mjs) forces the cef runtime on Linux;
 # for qt call the stock CLI directly.
-exec node "$checkout/node_modules/@tauri-apps/cli/tauri.js" dev \
+# The CLI is a dependency of the app, not of the workspace root (their own
+# wrapper resolves it the same way).
+TAURI_CLI="$app/node_modules/@tauri-apps/cli/tauri.js"
+[[ -f "$TAURI_CLI" ]] || { echo "no tauri CLI at $TAURI_CLI (deps installed?)" >&2; exit 1; }
+
+exec node "$TAURI_CLI" dev \
   --features qt --no-watch \
   --config '{"build":{"beforeDevCommand":""}}' \
   -- --no-default-features "$@"
