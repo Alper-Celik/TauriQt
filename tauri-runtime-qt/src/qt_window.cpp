@@ -4,8 +4,9 @@
 //! Top-level window registry for the Qt runtime.
 //!
 //! Owns one `QWidget` per Tauri window, keyed by the stable handle handed to
-//! Rust. All entry points run on the Qt GUI thread (the Rust side marshals
-//! through `QMetaObject::invokeMethod`); each one tolerates an unknown handle.
+//! Rust. All entry points run on the Qt GUI thread (the runtime dispatchers
+//! call them from the thread that owns the window) and each one tolerates an
+//! unknown handle.
 
 #include "qt_window.hpp"
 
@@ -17,13 +18,22 @@
 
 #include <QtCore/QCoreApplication>
 #include <QtCore/QPointer>
+#include <QtCore/QSize>
 #include <QtCore/QString>
+#include <QtCore/qnumeric.h>
+#include <QtGui/QColor>
 #include <QtGui/QCloseEvent>
 #include <QtGui/QGuiApplication>
+#include <QtGui/QIcon>
+#include <QtGui/QImage>
 #include <QtGui/QMoveEvent>
+#include <QtGui/QPalette>
+#include <QtGui/QPixmap>
 #include <QtGui/QResizeEvent>
 #include <QtGui/QScreen>
+#include <QtGui/QStyleHints>
 #include <QtGui/QWindow>
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QLayout>
 #include <QtWidgets/QStyle>
 #include <QtWidgets/QVBoxLayout>
@@ -79,6 +89,83 @@ public:
         });
     }
 
+    /// Enters or leaves fullscreen. Leaving restores the maximized state the
+    /// window had before it went fullscreen (`showNormal()` would drop it).
+    /// The request is mirrored because a window manager confirms
+    /// `Qt::WindowFullScreen` asynchronously — `isFullScreen()` can still lag
+    /// behind — while `qt_window_is_fullscreen` keeps reporting Qt's view.
+    /// The state of a hidden window is applied when it is next shown.
+    void set_fullscreen(bool fullscreen) {
+        if (fullscreen) {
+            if (m_fullscreen_requested && isFullScreen()) {
+                return;
+            }
+            m_pre_fullscreen_state = windowState() & (Qt::WindowMinimized | Qt::WindowMaximized);
+            m_fullscreen_requested = true;
+            setWindowState(windowState() | Qt::WindowFullScreen);
+        } else {
+            if (!m_fullscreen_requested && !isFullScreen()) {
+                return;
+            }
+            m_fullscreen_requested = false;
+            setWindowState((windowState() & ~Qt::WindowFullScreen) | m_pre_fullscreen_state);
+        }
+        if (isVisible()) {
+            show();  // apply the new state immediately
+        }
+    }
+
+    /// Qt exposes neither a resizable getter nor a setter; the size hints are
+    /// what a window manager honours, so disabling resizing pins the window to
+    /// its current size (`minimumSize == maximumSize`) and remembers the
+    /// constraints in force so that re-enabling restores them.
+    void set_resizable(bool resizable) {
+        if (resizable) {
+            if (!m_pinned_by_resizable) {
+                return;
+            }
+            setMinimumSize(m_pinned_min);
+            setMaximumSize(m_pinned_max);
+            m_pinned_by_resizable = false;
+        } else {
+            if (m_pinned_by_resizable) {
+                return;
+            }
+            m_pinned_min = minimumSize();
+            m_pinned_max = maximumSize();
+            m_pinned_by_resizable = true;
+            setMinimumSize(size());
+            setMaximumSize(size());
+        }
+    }
+
+    /// A window is resizable exactly while its size hints do not pin both
+    /// dimensions to one value (`set_resizable(false)` installs
+    /// `minimumSize == maximumSize`; explicit equal constraints pin it too).
+    bool is_resizable() const {
+        return minimumSize() != maximumSize();
+    }
+
+    /// Sets the minimum size from logical pixels. While resizing is disabled
+    /// the remembered pre-pin constraint is kept coherent, so that
+    /// `set_resizable(true)` restores what the caller last asked for.
+    void set_min_size(double width, double height) {
+        const QSize size(qRound(width), qRound(height));
+        if (m_pinned_by_resizable) {
+            m_pinned_min = size;
+        }
+        setMinimumSize(size);
+    }
+
+    /// Sets the maximum size from logical pixels.
+    void set_max_size(double width, double height) {
+        const QSize size(qRound(width), qRound(height));
+        if (m_pinned_by_resizable) {
+            m_pinned_max = size;
+        }
+        setMaximumSize(size);
+    }
+
 protected:
     void closeEvent(QCloseEvent* event) override {
         // The Rust side observes the request and may re-issue `close` after
@@ -110,6 +197,15 @@ private:
     std::uint64_t m_id;
     QPointer<QWindow> m_attached_handle;
     bool m_ready = false;
+    /// Window state to restore when leaving fullscreen.
+    Qt::WindowStates m_pre_fullscreen_state = Qt::WindowNoState;
+    /// The last fullscreen state requested (the window manager confirms the
+    /// change asynchronously, so `windowState()` alone is not enough).
+    bool m_fullscreen_requested = false;
+    /// Size constraints in force before `set_resizable(false)` pinned them.
+    QSize m_pinned_min{0, 0};
+    QSize m_pinned_max{QWIDGETSIZE_MAX, QWIDGETSIZE_MAX};
+    bool m_pinned_by_resizable = false;
 };
 
 std::unordered_map<std::uint64_t, TauriWindow*>& registry() {
@@ -126,6 +222,51 @@ TauriWindow* find_window(std::uint64_t id) {
     }
     const auto it = registry().find(id);
     return it == registry().end() ? nullptr : it->second;
+}
+
+/// Applies new window flags, restoring visibility: changing a window's flags
+/// re-parents the widget (hiding it) and may replace the platform `QWindow`,
+/// so the event connections are re-established as well.
+void apply_window_flags(TauriWindow* window, Qt::WindowFlags flags) {
+    if (flags == window->windowFlags()) {
+        return;  // a no-op flag change would needlessly hide and re-show it
+    }
+    const bool was_visible = window->isVisible();
+    window->setWindowFlags(flags);
+    if (was_visible) {
+        window->show();
+    }
+    window->attach();
+}
+
+/// tauri's `ResizeDirection` numbering (as mapped by `lib.rs`) to Qt edges.
+Qt::Edges edges_for_direction(std::int32_t direction) {
+    switch (direction) {
+        case 1:  // East
+            return Qt::RightEdge;
+        case 2:  // North
+            return Qt::TopEdge;
+        case 3:  // NorthEast
+            return Qt::TopEdge | Qt::RightEdge;
+        case 4:  // NorthWest
+            return Qt::TopEdge | Qt::LeftEdge;
+        case 5:  // South
+            return Qt::BottomEdge;
+        case 6:  // SouthEast
+            return Qt::BottomEdge | Qt::RightEdge;
+        case 7:  // SouthWest
+            return Qt::BottomEdge | Qt::LeftEdge;
+        case 8:  // West
+            return Qt::LeftEdge;
+        default:
+            return Qt::Edges();  // unknown: no direction
+    }
+}
+
+/// UTF-8 view of a QString for the Rust side.
+rust::String to_rust_string(const QString& text) {
+    const QByteArray utf8 = text.toUtf8();
+    return rust::String(utf8.constData(), static_cast<std::size_t>(utf8.size()));
 }
 
 }  // namespace
@@ -217,14 +358,9 @@ void qt_window_set_decorations(uint64_t id, bool decorations) {
         return;
     }
 
-    // Changing window flags re-parents the widget (hiding it) and may replace
-    // the platform QWindow: restore visibility and the signal connection.
-    const bool was_visible = window->isVisible();
-    window->setWindowFlag(Qt::FramelessWindowHint, !decorations);
-    if (was_visible) {
-        window->show();
-    }
-    window->attach();
+    Qt::WindowFlags flags = window->windowFlags();
+    flags.setFlag(Qt::FramelessWindowHint, !decorations);
+    apply_window_flags(window, flags);
 }
 
 void qt_window_set_maximized(uint64_t id, bool maximized) {
@@ -285,4 +421,296 @@ void qt_window_attach_webview(uint64_t window_id, uint64_t webview_native_id) {
     }
     layout->addWidget(view);
     view->show();
+}
+
+// ---- window worker: registry and platform ----
+
+bool qt_window_alive(uint64_t id) {
+    return find_window(id) != nullptr;
+}
+
+rust::String qt_window_platform() {
+    return to_rust_string(QGuiApplication::platformName());
+}
+
+// ---- geometry (Qt device-independent pixels) ----
+
+QtWindowSize qt_window_inner_size(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return {0.0, 0.0};
+    }
+    const QSize size = window->size();  // client area, excluding frame
+    return {static_cast<double>(size.width()), static_cast<double>(size.height())};
+}
+
+QtWindowSize qt_window_outer_size(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return {0.0, 0.0};
+    }
+    const QSize size = window->frameGeometry().size();
+    return {static_cast<double>(size.width()), static_cast<double>(size.height())};
+}
+
+QtWindowPoint qt_window_inner_position(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return {0.0, 0.0};
+    }
+    const QPoint origin = window->mapToGlobal(QPoint(0, 0));
+    return {static_cast<double>(origin.x()), static_cast<double>(origin.y())};
+}
+
+QtWindowPoint qt_window_outer_position(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return {0.0, 0.0};
+    }
+    const QPoint origin = window->frameGeometry().topLeft();
+    return {static_cast<double>(origin.x()), static_cast<double>(origin.y())};
+}
+
+// ---- state ----
+
+rust::String qt_window_title(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return rust::String();
+    }
+    return to_rust_string(window->windowTitle());
+}
+
+int32_t qt_window_theme(uint64_t id) {
+    if (find_window(id) == nullptr) {
+        return 0;
+    }
+    // 6.5+: the platform's colour scheme; `Unknown` means it does not report one.
+    switch (QGuiApplication::styleHints()->colorScheme()) {
+        case Qt::ColorScheme::Light:
+            return 1;
+        case Qt::ColorScheme::Dark:
+            return 2;
+        case Qt::ColorScheme::Unknown:
+        default:
+            return 0;
+    }
+}
+
+bool qt_window_is_fullscreen(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->isFullScreen();
+}
+
+bool qt_window_is_minimized(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->isMinimized();
+}
+
+bool qt_window_is_maximized(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->isMaximized();
+}
+
+bool qt_window_is_focused(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->isActiveWindow();
+}
+
+bool qt_window_is_decorated(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && !window->windowFlags().testFlag(Qt::FramelessWindowHint);
+}
+
+bool qt_window_is_resizable(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->is_resizable();
+}
+
+bool qt_window_is_enabled(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->isEnabled();
+}
+
+bool qt_window_is_always_on_top(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    // The hint Qt hands the window manager. Wayland compositors never honour
+    // it, and `qt_window_set_always_on_top` refuses to set it there, so the
+    // flag reports the truth on both platforms.
+    return window != nullptr && window->windowFlags().testFlag(Qt::WindowStaysOnTopHint);
+}
+
+bool qt_window_is_maximizable(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->windowFlags().testFlag(Qt::WindowMaximizeButtonHint);
+}
+
+bool qt_window_is_minimizable(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->windowFlags().testFlag(Qt::WindowMinimizeButtonHint);
+}
+
+bool qt_window_is_closable(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    return window != nullptr && window->windowFlags().testFlag(Qt::WindowCloseButtonHint);
+}
+
+// ---- setters ----
+
+void qt_window_set_fullscreen(uint64_t id, bool fullscreen) {
+    if (TauriWindow* window = find_window(id)) {
+        window->set_fullscreen(fullscreen);
+    }
+}
+
+void qt_window_minimize(uint64_t id) {
+    if (TauriWindow* window = find_window(id)) {
+        window->showMinimized();
+    }
+}
+
+void qt_window_unminimize(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    window->setWindowState(window->windowState() & ~Qt::WindowMinimized);
+    // Best effort: a Wayland compositor decides whether activation happens.
+    window->activateWindow();
+}
+
+void qt_window_set_min_size(uint64_t id, double width, double height) {
+    if (TauriWindow* window = find_window(id)) {
+        window->set_min_size(width, height);
+    }
+}
+
+void qt_window_set_max_size(uint64_t id, double width, double height) {
+    if (TauriWindow* window = find_window(id)) {
+        window->set_max_size(width, height);
+    }
+}
+
+bool qt_window_set_icon(uint64_t id, rust::Slice<const uint8_t> rgba, uint32_t width,
+                        uint32_t height) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return false;
+    }
+    const std::size_t expected =
+        static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4u;
+    if (width == 0 || height == 0 || rgba.size() != expected) {
+        return false;
+    }
+    // The QImage is a view onto the Rust buffer, so `QPixmap::fromImage` must
+    // happen inside this call (it converts/copies into an owned pixmap).
+    const QImage image(rgba.data(), static_cast<int>(width), static_cast<int>(height),
+                       QImage::Format_RGBA8888);
+    window->setWindowIcon(QIcon(QPixmap::fromImage(image)));
+    return true;
+}
+
+void qt_window_set_focus(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    // Both calls are activation requests: a Wayland compositor may refuse one
+    // that did not follow user input, and Qt has no way to report that back.
+    window->activateWindow();
+    window->raise();
+}
+
+void qt_window_set_resizable(uint64_t id, bool resizable) {
+    if (TauriWindow* window = find_window(id)) {
+        window->set_resizable(resizable);
+    }
+}
+
+void qt_window_set_enabled(uint64_t id, bool enabled) {
+    if (TauriWindow* window = find_window(id)) {
+        window->setEnabled(enabled);
+    }
+}
+
+void qt_window_set_always_on_top(uint64_t id, bool on_top) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    Qt::WindowFlags flags = window->windowFlags();
+    flags.setFlag(Qt::WindowStaysOnTopHint, on_top);
+    if (on_top) {
+        // The two stacking hints contradict each other; keep them exclusive.
+        flags.setFlag(Qt::WindowStaysOnBottomHint, false);
+    }
+    apply_window_flags(window, flags);
+}
+
+void qt_window_set_always_on_bottom(uint64_t id, bool on_bottom) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    Qt::WindowFlags flags = window->windowFlags();
+    flags.setFlag(Qt::WindowStaysOnBottomHint, on_bottom);
+    if (on_bottom) {
+        flags.setFlag(Qt::WindowStaysOnTopHint, false);
+    }
+    apply_window_flags(window, flags);
+}
+
+void qt_window_set_background_color(uint64_t id, uint8_t r, uint8_t g, uint8_t b, uint8_t a) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    QPalette palette = window->palette();
+    palette.setColor(QPalette::Window, QColor(r, g, b, a));
+    window->setPalette(palette);
+    window->setAutoFillBackground(true);
+}
+
+void qt_window_reset_background_color(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return;
+    }
+    window->setPalette(QApplication::palette());
+    window->setAutoFillBackground(false);
+}
+
+void qt_window_set_position(uint64_t id, int x, int y) {
+    if (TauriWindow* window = find_window(id)) {
+        // For a top-level widget `move` is the frame position on the desktop.
+        window->move(x, y);
+    }
+}
+
+bool qt_window_start_dragging(uint64_t id) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return false;
+    }
+    QWindow* handle = window->windowHandle();
+    if (handle == nullptr) {
+        return false;
+    }
+    return handle->startSystemMove();
+}
+
+bool qt_window_start_resize_dragging(uint64_t id, int32_t direction) {
+    TauriWindow* window = find_window(id);
+    if (window == nullptr) {
+        return false;
+    }
+    QWindow* handle = window->windowHandle();
+    if (handle == nullptr) {
+        return false;
+    }
+    const Qt::Edges edges = edges_for_direction(direction);
+    if (edges == Qt::Edges()) {
+        return false;  // unknown direction: nothing to drag from
+    }
+    return handle->startSystemResize(edges);
 }
