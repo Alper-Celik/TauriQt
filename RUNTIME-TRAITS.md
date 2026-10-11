@@ -69,6 +69,11 @@ invocation). MVP mapping:
 | `set_background_color` | `page()->setBackgroundColor` | ✅ |
 | `clear_all_browsing_data` | profile data paths + `QWebEngineProfile` clearing (Qt 6.7+: `clearHttpCache` etc.) | 🔶 |
 
+### Note on `WebviewEvent`
+`tauri_runtime::window::WebviewEvent` (2.12) has a single variant, `DragDrop`; page-load and
+title events must be routed through the `on_page_load_handler` / `document_title_changed_handler`
+tauri installs on `PendingWebview`, not through `on_webview_event`.
+
 ### IPC (not a trait method — lives in the runtime's scheme handlers)
 - `ipc://localhost/{cmd}` POST → `QWebEngineUrlSchemeHandler` → Tauri core invoke path
 - response written through `QWebEngineUrlRequestJob` (reply + content-type headers)

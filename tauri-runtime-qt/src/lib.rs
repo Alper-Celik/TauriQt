@@ -79,15 +79,24 @@ fn register_webview_handler<F: Fn(&WebviewEvent) + Send + 'static>(
     f: F,
 ) -> WebviewEventId {
     let id = NEXT_EVENT_ID.fetch_add(1, Ordering::Relaxed);
-    WEBVIEW_HANDLERS
-        .lock()
-        .unwrap()
-        .push((id, native, Box::new(f)));
+    WEBVIEW_HANDLERS.lock().push((id, native, Box::new(f)));
     id
 }
 
 /// Native handle of the Qt window backing each `WindowId`.
-static NATIVE_WINDOWS: Mutex<HashMap<WindowId, u64>> = Mutex::new(HashMap::new());
+static NATIVE_WINDOWS: Mutex<Vec<(WindowId, u64)>> = Mutex::new(Vec::new());
+
+/// Custom-protocol handler as tauri registers it on a pending webview.
+type SchemeHandler = Box<
+    dyn Fn(&str, http::Request<Vec<u8>>, Box<dyn FnOnce(http::Response<std::borrow::Cow<'static, [u8]>>) + Send>)
+        + Send
+        + Sync
+        + 'static,
+>;
+
+/// `uri_scheme_protocols` registered per native webview handle (scheme name → handler).
+static SCHEME_PROTOCOLS: Mutex<Vec<(u64, HashMap<String, SchemeHandler>)>> =
+    Mutex::new(Vec::new());
 
 /// Creates the Qt window for a pending window and records its handle.
 fn build_window<T: UserEvent>(
@@ -115,7 +124,7 @@ fn build_window<T: UserEvent>(
         let _ = (x, y); // M4: absolute positioning is a no-op on Wayland.
     }
     let id = WindowId::from(native as u32);
-    NATIVE_WINDOWS.lock().insert(id, native);
+    NATIVE_WINDOWS.lock().push((id, native));
     Ok((id, QtWindowDispatcher { native }))
 }
 
@@ -132,6 +141,9 @@ fn build_webview<T: UserEvent>(
         ));
     }
     qt::ffi::qt_window_attach_webview(window_native, qt::ffi::qt_webview_native_handle(native));
+    SCHEME_PROTOCOLS
+        .lock()
+        .push((native, pending.uri_scheme_protocols));
     qt::ffi::qt_scheme_install_handler(native);
     Ok(DetachedWebview {
         label: label.clone(),
@@ -169,8 +181,9 @@ fn create_window_impl<T: UserEvent>(
 fn window_native_of(id: WindowId) -> Result<u64> {
     NATIVE_WINDOWS
         .lock()
-        .get(&id)
-        .copied()
+        .iter()
+        .find(|(window_id, _)| *window_id == id)
+        .map(|(_, native)| *native)
         .ok_or(Error::WindowNotFound)
 }
 
@@ -495,9 +508,11 @@ impl<T: UserEvent> rt::Runtime<T> for QtRuntime {
         Ok(Self)
     }
 
-    fn new_any_thread(_args: RuntimeInitArgs) -> Result<Self> {
-        // M4: Qt on a non-main thread (supported on Linux).
-        todo!("M4: new_any_thread")
+    fn new_any_thread(args: RuntimeInitArgs) -> Result<Self> {
+        // tauri core constructs the runtime through this entry point on Linux;
+        // Qt still requires the QApplication on the process' main thread, which
+        // is where tauri calls it from.
+        <Self as rt::Runtime<T>>::new(args)
     }
 
     fn create_proxy(&self) -> Self::EventLoopProxy {

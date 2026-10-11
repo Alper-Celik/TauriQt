@@ -104,13 +104,14 @@ QByteArray serializeRequestHeaders(QWebEngineUrlRequestJob* job) {
 // One `QWebEngineUrlSchemeHandler` per scheme; forwards every request to Rust.
 class TauriSchemeHandler final : public QWebEngineUrlSchemeHandler {
 public:
-    explicit TauriSchemeHandler(std::int32_t kind, QObject* parent = nullptr)
-        : QWebEngineUrlSchemeHandler(parent), kind_(kind) {}
+    TauriSchemeHandler(std::int32_t kind, std::uint64_t webview_id, QObject* parent = nullptr)
+        : QWebEngineUrlSchemeHandler(parent), kind_(kind), webview_id_(webview_id) {}
 
     void requestStarted(QWebEngineUrlRequestJob* job) override;
 
 private:
     std::int32_t kind_;
+    std::uint64_t webview_id_;
 };
 
 // Owns the per-request state and drives the reply.
@@ -122,8 +123,8 @@ private:
 // a job child is exactly as long-lived as the job.
 class JobContext final : public QObject {
 public:
-    JobContext(QWebEngineUrlRequestJob* job, std::int32_t kind)
-        : QObject(job), job_(job), kind_(kind) {
+    JobContext(QWebEngineUrlRequestJob* job, std::int32_t kind, std::uint64_t webview_id)
+        : QObject(job), job_(job), kind_(kind), webview_id_(webview_id) {
         method_ = job->requestMethod();
         url_ = job->requestUrl();
         headers_ = serializeRequestHeaders(job);
@@ -179,6 +180,7 @@ private:
 
         const QByteArray urlBytes = url_.toString(QUrl::FullyEncoded).toUtf8();
         const ::QtSchemeResponse response = qt_scheme_request(
+            webview_id_,
             kind_,
             rust::Str(method_.constData(), static_cast<std::size_t>(method_.size())),
             rust::Str(urlBytes.constData(), static_cast<std::size_t>(urlBytes.size())),
@@ -250,6 +252,7 @@ private:
 
     QPointer<QWebEngineUrlRequestJob> job_;
     std::int32_t kind_;
+    std::uint64_t webview_id_;
     QByteArray method_;
     QUrl url_;
     QByteArray headers_;
@@ -262,10 +265,10 @@ void TauriSchemeHandler::requestStarted(QWebEngineUrlRequestJob* job) {
     if (job == nullptr) {
         return;
     }
-    (new JobContext(job, kind_))->start();
+    (new JobContext(job, kind_, webview_id_))->start();
 }
 
-void installOnProfile(QWebEngineProfile* profile) {
+void installOnProfile(QWebEngineProfile* profile, std::uint64_t webview_id) {
     if (profile == nullptr) {
         return;
     }
@@ -273,11 +276,11 @@ void installOnProfile(QWebEngineProfile* profile) {
         return; // already installed for this profile
     }
     profile->installUrlSchemeHandler(QByteArrayLiteral("ipc"),
-                                     new TauriSchemeHandler(SchemeIpc, profile));
+                                     new TauriSchemeHandler(SchemeIpc, webview_id, profile));
     profile->installUrlSchemeHandler(QByteArrayLiteral("tauri"),
-                                     new TauriSchemeHandler(SchemeTauri, profile));
+                                     new TauriSchemeHandler(SchemeTauri, webview_id, profile));
     profile->installUrlSchemeHandler(QByteArrayLiteral("asset"),
-                                     new TauriSchemeHandler(SchemeAsset, profile));
+                                     new TauriSchemeHandler(SchemeAsset, webview_id, profile));
 }
 
 } // namespace
@@ -323,5 +326,5 @@ void qt_scheme_install_handler(std::uint64_t webview_id) {
         return;
     }
     QWebEnginePage* page = view->page();
-    installOnProfile(page != nullptr ? page->profile() : nullptr);
+    installOnProfile(page != nullptr ? page->profile() : nullptr, webview_id);
 }

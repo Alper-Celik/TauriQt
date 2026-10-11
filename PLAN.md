@@ -3,8 +3,24 @@
 Goal: a Qt-based runtime for Tauri 2 on Linux — Qt windowing (replace tao) + QtWebEngine
 (replace webkit2gtk), implemented as a custom `tauri::runtime::Runtime`.
 
-Status: **M0 done** — sample app (Rust → cxx-qt → `QApplication` + `QWebEngineView`,
-google.com) runs buttery smooth on Wayland (validated 2026-10-11).
+Status (2026-10-11):
+
+- **M0 done** — sample app (Rust → cxx-qt → `QApplication` + `QWebEngineView`, google.com)
+  runs buttery smooth on Wayland.
+- **M4 in progress** — `tauri-runtime-qt` implements the full trait surface and now backs it
+  with real Qt code: `QApplication` bootstrap + URL-scheme registration (`qt_app.cpp`),
+  window registry/geometry/events (`qt_window.cpp`), `QWebEngineView` lifecycle + devtools
+  (`qt_webview.cpp`), and the `ipc`/`tauri`/`asset` scheme handler with the reply-job lifetime
+  recipe (`qt_scheme.cpp`). Glue is plain `cxx` + `qt-build-utils` (cxx-qt's initializer
+  machinery cannot link from a library crate).
+- **M1 wiring** — Rust routes scheme requests into the `uri_scheme_protocols` tauri registers
+  per webview, and maps responses back (`Tauri-Response`, CORS expose-headers, content type).
+- App side: `tauriqt` is now a Tauri 2 app built **without the `wry` feature** on Linux, with
+  wry wired in as a per-target fallback for Windows/macOS (and `--features wry` on Linux).
+
+Known limits at this stage: cookies/`clear_all_browsing_data`/`eval_script_with_callback`/
+`reparent` return errors; scheme responses that tauri resolves asynchronously are reported
+unhandled (the bridge call is synchronous); binary IPC bodies are carried as `str`.
 
 ## Milestones
 

@@ -10,10 +10,9 @@
 //! (it declares the `extern "Rust"` callbacks below with the correct linkage):
 //! `#include "tauri-runtime-qt/src/qt.rs.h"`.
 
+use parking_lot::Mutex;
 use tauri_runtime as rt;
-use tauri_runtime::WindowEvent;
-
-use crate::WINDOW_HANDLERS;
+use tauri_runtime::window::WindowEvent;
 
 #[cxx::bridge]
 pub mod ffi {
@@ -91,10 +90,12 @@ pub mod ffi {
         /// 3 = url changed, 4 = title changed, 5 = load failed.
         fn qt_on_webview_event(id: u64, kind: i32, payload: &str);
 
-        /// Custom-scheme request routed to Tauri's handler.
-        /// Returns 1 when handled (response written through the out params),
-        /// 0 when unhandled (the C++ side then fails the request).
+        /// Custom-scheme request routed to the handler tauri registered for the
+        /// webview. `scheme_kind`: 0 = ipc, 1 = tauri, 2 = asset. `headers` is a
+        /// newline-separated `k: v` list, and the response carries the same
+        /// encoding back.
         fn qt_scheme_request(
+            webview_id: u64,
             scheme_kind: i32,
             method: &str,
             url: &str,
@@ -105,10 +106,9 @@ pub mod ffi {
 
     /// Response produced for a custom-scheme request.
     struct QtSchemeResponse {
-        /// 1 = handled (use the fields below), 0 = unhandled.
+        /// 1 = handled (the fields below are valid), 0 = unhandled.
         handled: i32,
         status: i32,
-        /// `\n`-separated `k: v` header list.
         headers: String,
         body: String,
     }
@@ -142,7 +142,7 @@ pub fn qt_on_window_event(id: u64, kind: i32, payload: &str) {
         _ => return,
     };
 
-    for (_, native, handler) in WINDOW_HANDLERS.lock().iter() {
+    for (_, native, handler) in crate::WINDOW_HANDLERS.lock().iter() {
         if *native == id {
             handler(&event);
         }
@@ -151,29 +151,96 @@ pub fn qt_on_window_event(id: u64, kind: i32, payload: &str) {
 
 /// Webview events emitted from Qt (see the bridge declaration for the kinds).
 ///
-/// `tauri_runtime::window::WebviewEvent` only has `DragDrop` in 2.12, so load
-/// state is currently only recorded (M2 will route it into the page-load
-/// handler tauri sets through `WebviewAttributes`).
+/// `tauri_runtime::window::WebviewEvent` only has `DragDrop` in 2.12; page-load
+/// and title events must go through the handlers tauri puts on `PendingWebview`.
 pub fn qt_on_webview_event(id: u64, kind: i32, payload: &str) {
     let _ = (id, kind, payload);
 }
 
-/// Custom-scheme request routed to Tauri's handler.
-///
-/// M1 wires this to the `ipc_handler` / `uri_scheme_protocols` tauri installed
-/// on the pending webview; until then every request is reported unhandled.
+fn unhandled() -> ffi::QtSchemeResponse {
+    ffi::QtSchemeResponse {
+        handled: 0,
+        status: 404,
+        headers: String::new(),
+        body: String::new(),
+    }
+}
+
+/// Custom-scheme request routed to the handler tauri registered for this webview.
 pub fn qt_scheme_request(
+    webview_id: u64,
     scheme_kind: i32,
     method: &str,
     url: &str,
     headers: &str,
     body: &str,
-) -> QtSchemeResponse {
-    let _ = (scheme_kind, method, url, headers, body);
-    QtSchemeResponse {
-        handled: 0,
-        status: 404,
-        headers: String::new(),
-        body: String::new(),
+) -> ffi::QtSchemeResponse {
+    let scheme = match scheme_kind {
+        0 => "ipc",
+        1 => "tauri",
+        2 => "asset",
+        _ => return unhandled(),
+    };
+
+    let mut request = http::Request::builder().method(method).uri(url);
+    for line in headers.lines() {
+        if let Some((name, value)) = line.split_once(": ") {
+            request = request.header(name.trim(), value.trim());
+        }
+    }
+    let Ok(request) = request.body(body.as_bytes().to_vec()) else {
+        return unhandled();
+    };
+
+    let slot: std::sync::Arc<Mutex<Option<http::Response<std::borrow::Cow<'static, [u8]>>>>> =
+        std::sync::Arc::new(Mutex::new(None));
+    let captured = std::sync::Arc::clone(&slot);
+
+    {
+        let guard = crate::SCHEME_PROTOCOLS.lock();
+        let Some(entry) = guard.iter().find(|(id, _)| *id == webview_id) else {
+            return unhandled();
+        };
+        let Some(handler) = entry.1.get(scheme) else {
+            return unhandled();
+        };
+        handler(
+            scheme,
+            request,
+            Box::new(move |response: http::Response<std::borrow::Cow<'static, [u8]>>| {
+                *captured.lock() = Some(response);
+            }),
+        );
+    }
+
+    let Some(response) = slot.lock().take() else {
+        // tauri resolved the invoke asynchronously; the synchronous bridge
+        // cannot wait for it (documented limitation, see PLAN.md M1).
+        return unhandled();
+    };
+
+    let status = response.status().as_u16() as i32;
+    let mut out_headers = String::new();
+    for (name, value) in response.headers() {
+        if let Ok(value) = value.to_str() {
+            out_headers.push_str(name.as_str());
+            out_headers.push_str(": ");
+            out_headers.push_str(&value.replace(['\r', '\n'], ""));
+            out_headers.push('\n');
+        }
+    }
+    if !out_headers.contains("Access-Control-Expose-Headers") {
+        out_headers.push_str("Access-Control-Expose-Headers: Tauri-Response, Content-Type\n");
+    }
+
+    let body = String::from_utf8_lossy(response.body()).into_owned();
+    #[cfg(debug_assertions)]
+    eprintln!("[tauri-runtime-qt] {scheme} {method} {url} -> {status} ({} body bytes)", body.len());
+
+    ffi::QtSchemeResponse {
+        handled: 1,
+        status,
+        headers: out_headers,
+        body,
     }
 }
