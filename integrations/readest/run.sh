@@ -13,7 +13,10 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 checkout="${READEST_CHECKOUT:-$here/checkout}"
 app="$checkout/apps/readest-app"
 
-[[ -d "$app" ]] || { echo "no checkout at $app — run apply.sh first" >&2; exit 1; }
+[[ -d "$app" ]] || {
+  echo "no checkout at $app — run apply.sh first" >&2
+  exit 1
+}
 [[ -d "$checkout/node_modules" ]] || {
   echo "no node_modules in $checkout; install deps, e.g.:" >&2
   echo "  LD_LIBRARY_PATH= nix shell nixpkgs#pnpm_11 -c pnpm install --frozen-lockfile" >&2
@@ -29,7 +32,7 @@ export QTWEBENGINE_REMOTE_DEBUGGING="${QTWEBENGINE_REMOTE_DEBUGGING:-9222}"
 export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox --disable-gpu --disable-gpu-compositing}"
 # A build sandbox has no display; callers that have one (or a headless sway
 # session) override this.
-export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+# export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
 
 cleanup() {
   [[ -n "${DEV_PID:-}" ]] && kill "$DEV_PID" 2>/dev/null || true
@@ -48,10 +51,16 @@ else
   DEV_PID=$!
   for _ in $(seq 1 120); do
     curl -sf "http://localhost:3000" >/dev/null 2>&1 && break
-    kill -0 "$DEV_PID" 2>/dev/null || { echo "next dev died; see $checkout/next-dev.log" >&2; exit 1; }
+    kill -0 "$DEV_PID" 2>/dev/null || {
+      echo "next dev died; see $checkout/next-dev.log" >&2
+      exit 1
+    }
     sleep 1
   done
-  curl -sf "http://localhost:3000" >/dev/null 2>&1 || { echo "next dev never became ready" >&2; exit 1; }
+  curl -sf "http://localhost:3000" >/dev/null 2>&1 || {
+    echo "next dev never became ready" >&2
+    exit 1
+  }
 fi
 
 echo "CDP on 127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING (try: curl -s http://127.0.0.1:$QTWEBENGINE_REMOTE_DEBUGGING/json/version)"
@@ -62,7 +71,10 @@ cd "$app"
 # The CLI is a dependency of the app, not of the workspace root (their own
 # wrapper resolves it the same way).
 TAURI_CLI="$app/node_modules/@tauri-apps/cli/tauri.js"
-[[ -f "$TAURI_CLI" ]] || { echo "no tauri CLI at $TAURI_CLI (deps installed?)" >&2; exit 1; }
+[[ -f "$TAURI_CLI" ]] || {
+  echo "no tauri CLI at $TAURI_CLI (deps installed?)" >&2
+  exit 1
+}
 
 exec node "$TAURI_CLI" dev \
   --features qt --no-watch \

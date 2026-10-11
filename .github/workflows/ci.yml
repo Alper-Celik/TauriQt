@@ -11,8 +11,9 @@
 # runner-provided language toolchains.
 #
 # Shape: `eval` gates (flake must evaluate for both systems), `lint` is hygiene,
-# and `checks` is a matrix over {system} × {check} with fail-fast disabled so one
-# red cell never hides the others. `collect` then runs regardless of the outcome,
+# `checks` is a matrix over {system} × {check} with fail-fast disabled so one red
+# cell never hides the others, and `apps` runs other people's applications
+# against this runtime (integrations/apps.json drives its matrix). `collect` then runs regardless of the outcome,
 # folds every cell's status and log tail into one table in the run summary, and
 # fails the run if anything did — so a single required status is meaningful.
 
@@ -23,6 +24,10 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # The third-party app integrations (job `apps`) are a full app build each, so
+  # they run nightly and on demand rather than on every push.
+  schedule:
+    - cron: '0 3 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -157,7 +162,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          LD_LIBRARY_PATH= nix develop .#ci -c scripts/coverage.sh 2>&1 | tee coverage.log
+          env LD_LIBRARY_PATH= nix develop .#ci -c scripts/coverage.sh 2>&1 | tee coverage.log
       - name: Write the coverage table into the run summary
         if: always()
         shell: bash
@@ -204,19 +209,93 @@ jobs:
       # has a CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID) secret, and it
       # never blocks the run — the artifacts above always carry the reports.
       - name: Publish the HTML report to Cloudflare Pages
-        if: ${{ success() && secrets.CLOUDFLARE_API_TOKEN != '' && hashFiles('coverage/report/index.html') != '' }}
+        # `secrets` is not a valid context in a step-level `if`, so the token is
+        # hoisted into the step's env and the condition reads that instead.
+        if: ${{ success() && env.CLOUDFLARE_API_TOKEN != '' && hashFiles('coverage/report/index.html') != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy coverage/report --project-name=tauriqt-coverage
 
+  # Third-party applications this runtime is tested against. The list lives in
+  # integrations/apps.json (see integrations/README.md); this job only turns it
+  # into a matrix, so adding an app is a directory plus an entry there.
+  apps-list:
+    name: list app integrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - id: matrix
+        run: |
+          # shellcheck disable=SC2016  # the $… are jq's, not the shell's
+          matrix="$(nix shell nixpkgs#jq -c jq -c \
+            '{include: [.apps[] as $a | $a.systems[] | {app: $a.name, system: ., entry: $a.entry, timeout: ($a["timeout-minutes"] // 120)}]}' \
+            integrations/apps.json)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "apps: $matrix"
+
+  # One cell per app: build it against this runtime and run its own assertions.
+  # Heavy by nature (a 1000-crate Rust build plus a frontend install), which is
+  # why it is gated to the nightly/dispatch triggers. Each app owns its entry
+  # script; CI only provides the checkout location (outside the repo on purpose:
+  # a checkout nested in this cargo workspace makes cargo resolve the app's
+  # vendored crates against our workspace root).
+  apps:
+    name: ${{ matrix.app }} (${{ matrix.system }})
+    needs: [eval, apps-list]
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ${{ matrix.system == 'aarch64-linux' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.apps-list.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Run the app's integration
+        shell: bash
+        # `runner` is only available inside a step, not in a job-level env.
+        env:
+          INTEGRATION_CHECKOUT: ${{ runner.temp }}/${{ matrix.app }}-checkout
+        run: |
+          set -o pipefail
+          nix develop .#ci -c "${{ matrix.entry }}" \
+            2>&1 | tee "app-${{ matrix.app }}-${{ matrix.system }}.log"
+      - name: Record result and log tail
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p results
+          base="results/${{ matrix.system }}-${{ matrix.app }}"
+          printf '%s|%s|%s\n' "${{ matrix.system }}" "${{ matrix.app }}" "${{ job.status }}" > "$base.txt"
+          if [ -f "app-${{ matrix.app }}-${{ matrix.system }}.log" ]; then
+            tail -c 60000 "app-${{ matrix.app }}-${{ matrix.system }}.log" > "$base.log"
+          fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: results-${{ matrix.system }}-${{ matrix.app }}
+          path: results/
+          retention-days: 14
+
   # Runs no matter what happened above, gathers every cell's status + log tail,
   # writes one table into the run summary, keeps the logs as a single artifact,
   # and only then decides the run's outcome.
   collect:
     name: collect results
-    needs: [eval, lint, checks, coverage]
+    needs: [eval, lint, checks, coverage, apps]
     if: always()
     runs-on: ubuntu-24.04
     steps:
@@ -251,7 +330,7 @@ jobs:
             done < <(find results -maxdepth 1 -name '*.txt' | sort)
             echo "| x86_64-linux | coverage | $coverage_icon $coverage_result |"
             echo
-            echo "gates — eval: \`${{ needs.eval.result }}\` · lint: \`${{ needs.lint.result }}\` · checks: \`${{ needs.checks.result }}\` · coverage: \`$coverage_result\`"
+            echo "gates — eval: \`${{ needs.eval.result }}\` · lint: \`${{ needs.lint.result }}\` · checks: \`${{ needs.checks.result }}\` · coverage: \`$coverage_result\` · apps: \`${{ needs.apps.result }}\`"
             echo
             echo "The coverage job writes its own table (and its artifacts) into the run summary above its job log; \`coverage/summary.md\` is in the \`coverage-lcov\` artifact."
           } >> "$summary"
@@ -286,3 +365,8 @@ jobs:
           for r in "${{ needs.eval.result }}" "${{ needs.lint.result }}" "${{ needs.checks.result }}" "${{ needs.coverage.result }}"; do
             [ "$r" = "success" ] || { echo "::error::CI failed (see the summary table above)"; exit 1; }
           done
+          # The app tier is gated to schedule/dispatch, so a skip is expected.
+          case "${{ needs.apps.result }}" in
+            success | skipped) ;;
+            *) echo "::error::CI failed (app integration, see the summary table above)"; exit 1 ;;
+          esac

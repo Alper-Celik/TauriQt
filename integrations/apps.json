@@ -1,0 +1,18 @@
+{
+  "$comment": "Third-party apps this runtime is tested against. CI reads this file (job `apps-list` in .github/workflows/ci.yml) and runs each entry's `entry` script on the listed systems. See integrations/README.md for the convention. Keys: name (also the directory under integrations/), repo + ref (pinned commit), systems, entry, timeout-minutes, stages (what the entry script asserts).",
+  "apps": [
+    {
+      "name": "readest",
+      "repo": "https://github.com/readest/readest",
+      "ref": "385a322b8c1934375d02c50435b07c268d8ed3de",
+      "systems": ["x86_64-linux"],
+      "entry": "integrations/readest/ci.sh",
+      "timeout-minutes": 150,
+      "stages": [
+        "their Rust suite (cargo test -p Readest --lib) passes on a build that links this runtime",
+        "the app boots on this runtime and its own invoke() round-trips to Rust (CDP check)"
+      ],
+      "notes": "Heavy: needs pnpm, network, several GB and a long Rust build. WebDriver-driven suites cannot run (QtWebEngine has no Target.createTarget) — see the app README."
+    }
+  ]
+}
