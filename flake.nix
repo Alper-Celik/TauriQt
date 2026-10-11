@@ -194,15 +194,13 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           env.QMAKE = "${qmakeMerged pkgs}/bin/qmake";
+          # qtbase's nix setup hook exports QMAKE=<qtbase>/bin/qmake *after* the
+          # derivation `env` is applied, and qt-build-utils prefers $QMAKE over
+          # PATH. That loses the merged Qt tree (no Qt6WebEngineWidgets.prl) and
+          # the build dies in find_prl_for_qt_module. Re-assert the shim once the
+          # hooks have run; preBuild runs immediately before buildPhase.
           preBuild = ''
-            echo "=== Qt diagnostics (temporary) ==="
-            echo "QMAKE env        : $QMAKE"
-            echo "which qmake      : $(command -v qmake)"
-            echo "qmake -query LIBS: $(qmake -query QT_INSTALL_LIBS)"
-            echo "merge target     : ${qtMerged pkgs}"
-            ls "${qtMerged pkgs}/lib" 2>&1 | grep -i 'WebEngineWidgets' || echo "NO WebEngineWidgets prl in merge target"
-            ls "$(qmake -query QT_INSTALL_LIBS)" 2>&1 | grep -i 'WebEngineWidgets' || echo "NO WebEngineWidgets prl at queried path"
-            echo "=== end diagnostics ==="
+            export QMAKE="${qmakeMerged pkgs}/bin/qmake"
           '';
           nativeBuildInputs = [
             (qmakeMerged pkgs)
