@@ -194,6 +194,13 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           env.QMAKE = "${qmakeMerged pkgs}/bin/qmake";
+          # `cargo test` cannot link this workspace yet: the runtime crate's unit
+          # test binary fails with undefined Qt symbols because the `-lQt6*` flags
+          # land before our C++ archive and `--as-needed` drops them. The fix is to
+          # move the pure logic into a Qt-free `tauri-runtime-qt-core` crate (then
+          # unit tests link without Qt); until then behaviour is covered by the
+          # harness checks (checks.*), not by cargo test.
+          doCheck = false;
           # qtbase's nix setup hook exports QMAKE=<qtbase>/bin/qmake *after* the
           # derivation `env` is applied, and qt-build-utils prefers $QMAKE over
           # PATH. That loses the merged Qt tree (no Qt6WebEngineWidgets.prl) and
@@ -248,6 +255,7 @@
             pkgs.clippy
             pkgs.cmake
             pkgs.reuse
+            pkgs.just
             pkgs.pkg-config
             pkgs.glib
             pkgs.gtk3

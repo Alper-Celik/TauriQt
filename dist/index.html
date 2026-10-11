@@ -31,6 +31,13 @@
       .bad {
         color: #b3261e;
       }
+      iframe.sandbox {
+        display: block;
+        width: 36rem;
+        height: 4rem;
+        margin-top: 1rem;
+        border: 1px solid #ccc;
+      }
     </style>
   </head>
   <body>
@@ -98,6 +105,288 @@
           }
         }
 
+        // ---- cookies -------------------------------------------------------
+        //
+        // This page runs on tauri://localhost, a custom scheme. Chromium only
+        // lets a document read or write cookies on a *cookieable* scheme
+        // (http, https, ws, wss) — the same limitation tauri documents for
+        // `Webview::cookies()` on tauri:// URLs. The real `document.cookie` half
+        // of the demo therefore runs in a sandbox document served from
+        // http://127.0.0.1, embedded as an iframe: a different origin, but the
+        // same webview and profile, so the same cookie store the runtime's
+        // mirror watches.
+        const sandboxWaiters = new Map();
+        let sandboxSeq = 0;
+
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+        /// Records one expectation: renders it, reports it and fails the demo
+        /// when it does not hold.
+        function check(name, ok, detail) {
+          render(name, detail, ok);
+          if (!ok) {
+            failures.push(`${name} -> ${detail}`);
+          }
+          void report(`${name}: ${ok ? "OK" : "FAIL"} (${detail})`);
+          return ok;
+        }
+
+        /// One `document.cookie` operation in the sandbox, resolved with what
+        /// the sandbox read back afterwards.
+        function sandboxCall(frame, op, cookie) {
+          return new Promise((resolve) => {
+            const id = ++sandboxSeq;
+            sandboxWaiters.set(id, resolve);
+            frame.contentWindow.postMessage({ id, op, cookie }, "*");
+          });
+        }
+
+        /// Polls the sandbox's `document.cookie` until `predicate` holds or
+        /// `timeoutMs` elapses. The runtime's writes reach Chromium's cookie
+        /// store asynchronously, so a read right after `set_cookie` can
+        /// legitimately miss the cookie for a moment.
+        async function sandboxUntil(frame, predicate, timeoutMs = 8000) {
+          const started = Date.now();
+          const deadline = started + timeoutMs;
+          for (;;) {
+            const value = await sandboxCall(frame, "read");
+            const waited = Date.now() - started;
+            if (predicate(value)) {
+              return { ok: true, value, waited };
+            }
+            if (Date.now() >= deadline) {
+              return { ok: false, value, waited };
+            }
+            await sleep(100);
+          }
+        }
+
+        /// Starts the sandbox iframe and resolves once its document is ready.
+        function startSandbox(url) {
+          return new Promise((resolve, reject) => {
+            const frame = document.createElement("iframe");
+            frame.className = "sandbox";
+            // `hostname` (no port): the port is not part of a cookie's domain.
+            const host = new URL(url).hostname;
+            const timer = setTimeout(
+              () => reject(new Error(`cookie sandbox ${url} did not report ready`)),
+              10000,
+            );
+            window.addEventListener("message", (event) => {
+              if (event.source !== frame.contentWindow) {
+                return;
+              }
+              const msg = event.data || {};
+              if (msg.op === "ready") {
+                clearTimeout(timer);
+                resolve({ frame, host, origin: new URL(url).origin });
+                return;
+              }
+              const waiter = sandboxWaiters.get(msg.id);
+              if (waiter) {
+                sandboxWaiters.delete(msg.id);
+                waiter(String(msg.result));
+              }
+            });
+            frame.src = url;
+            document.body.appendChild(frame);
+          });
+        }
+
+        /// Dumps the runtime's cookie mirror, retrying until `predicate` holds
+        /// or `timeoutMs` elapses. The mirror is fed by Qt's asynchronous
+        /// cookie signals, so it can trail an operation by a moment.
+        async function dumpUntil(predicate, timeoutMs = 3000) {
+          const deadline = Date.now() + timeoutMs;
+          for (;;) {
+            const dump = String(await invoke("cookies_dump", {}));
+            if (predicate(dump)) {
+              return { ok: true, dump };
+            }
+            if (Date.now() >= deadline) {
+              return { ok: false, dump };
+            }
+            await sleep(100);
+          }
+        }
+
+        /// The cookie acceptance steps: JS sets and deletes through
+        /// `document.cookie`, Rust sets and deletes through the runtime, and
+        /// both sides observe the other's change.
+        async function cookieSteps() {
+          // JS on the page's own origin cannot touch cookies at all.
+          let tauriCookie;
+          try {
+            document.cookie = "tauri_origin=ignored; path=/";
+            tauriCookie = document.cookie;
+          } catch (err) {
+            tauriCookie = `ERR(${err})`;
+          }
+          check(
+            "cookie_js_on_tauri_scheme",
+            tauriCookie === "" || tauriCookie.startsWith("ERR("),
+            `document.cookie=${JSON.stringify(tauriCookie)} after a write (custom schemes are not cookieable in Chromium)`,
+          );
+
+          const baseline = await call("cookies_baseline", "cookies_dump", {});
+          check(
+            "cookies_baseline_empty",
+            String(baseline) === "(no cookies)",
+            String(baseline),
+          );
+
+          const url = await invoke("cookie_sandbox_url");
+          if (typeof url !== "string" || url.length === 0) {
+            check("cookie_sandbox_url", false, String(url));
+            return;
+          }
+          check("cookie_sandbox_url", true, url);
+          const sandbox = await startSandbox(url);
+          check("cookie_sandbox_ready", true, `serving ${sandbox.origin}`);
+
+          // (a) JS writes document.cookie in the sandbox; the runtime's mirror
+          // lists the cookie. The sandbox is a *third-party* frame (different
+          // site from tauri://localhost), and Chromium only lets such a frame
+          // use cookies declared `SameSite=None; Secure`: a plain write there is
+          // silently dropped, exactly like the one on the tauri:// origin.
+          const jsSet = await sandboxCall(
+            sandbox.frame,
+            "set",
+            "js_set=from_js; path=/; SameSite=None; Secure",
+          );
+          const jsSetReadback = await sandboxUntil(
+            sandbox.frame,
+            (value) => value.includes("js_set=from_js"),
+          );
+          check(
+            "cookie_js_set_readback",
+            jsSetReadback.ok,
+            `document.cookie=${JSON.stringify(jsSetReadback.value)} (set read back as ${JSON.stringify(jsSet)})`,
+          );
+          const afterJsSet = await dumpUntil((dump) => dump.includes("js_set=from_js"));
+          check("cookie_js_set_in_mirror", afterJsSet.ok, afterJsSet.dump);
+          await report(`cookies_after_js_set: ${afterJsSet.dump}`);
+
+          // (b) Rust sets a cookie; JS reads it back with document.cookie. It is
+          // `SameSite=None; Secure` for the same third-party reason as above.
+          await call("cookie_set_rust", "cookie_set", {
+            name: "rust_set",
+            value: "from_rust",
+            domain: sandbox.host,
+            path: "/",
+            secure: true,
+            sameSite: "none", // tauri camelCases command arguments
+          });
+          const rustReadback = await sandboxUntil(
+            sandbox.frame,
+            (value) => value.includes("rust_set=from_rust"),
+          );
+          check(
+            "cookie_rust_set_visible_to_js",
+            rustReadback.ok,
+            `document.cookie=${JSON.stringify(rustReadback.value)} after ${rustReadback.waited}ms`,
+          );
+          const afterRustSet = await dumpUntil((dump) => dump.includes("rust_set=from_rust"));
+          check("cookie_rust_set_in_mirror", afterRustSet.ok, afterRustSet.dump);
+          await report(`cookies_after_rust_set: ${afterRustSet.dump}`);
+
+          // cookies_for_url() applies the host/path/secure rules: both cookies
+          // are Secure and host-only for 127.0.0.1, so they answer for an https
+          // URL of that host and are skipped for its http URL.
+          const secureUrl = `https://${sandbox.host}/`;
+          const forSandbox = await call("cookies_for_https_sandbox_url", "cookies_dump", {
+            url: secureUrl,
+          });
+          check(
+            "cookies_for_url_matches_secure_sandbox",
+            String(forSandbox).includes("js_set=from_js") &&
+              String(forSandbox).includes("rust_set=from_rust"),
+            String(forSandbox),
+          );
+          const forSandboxHttp = await call("cookies_for_http_sandbox_url", "cookies_dump", {
+            url,
+          });
+          check(
+            "cookies_for_url_skips_secure_on_http",
+            !String(forSandboxHttp).includes("js_set=from_js") &&
+              !String(forSandboxHttp).includes("rust_set=from_rust"),
+            String(forSandboxHttp),
+          );
+          await call("cookie_set_other_domain", "cookie_set", {
+            name: "other_site",
+            value: "v",
+            domain: "example.com",
+            path: "/",
+            secure: true,
+            sameSite: "none", // tauri camelCases command arguments
+          });
+          const forOther = await call("cookies_for_other_url", "cookies_dump", {
+            url: "https://www.example.com/",
+          });
+          check(
+            "cookies_for_url_domain_match",
+            String(forOther).includes("other_site") &&
+              !String(forOther).includes("js_set=from_js"),
+            String(forOther),
+          );
+          const forSandboxAgain = String(await invoke("cookies_dump", { url: secureUrl }));
+          check(
+            "cookies_for_url_excludes_other_domain",
+            !forSandboxAgain.includes("other_site"),
+            forSandboxAgain,
+          );
+
+          // (c1) JS deletes its own cookie (expiry in the past; the delete is a
+          // write, so it carries the same SameSite/Secure attributes).
+          const jsDelete = await sandboxCall(
+            sandbox.frame,
+            "set",
+            "js_set=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=None; Secure",
+          );
+          const jsDeleteReadback = await sandboxUntil(
+            sandbox.frame,
+            (value) => !value.includes("js_set=from_js"),
+          );
+          check(
+            "cookie_js_delete_readback",
+            jsDeleteReadback.ok,
+            `document.cookie=${JSON.stringify(jsDeleteReadback.value)} (delete read back as ${JSON.stringify(jsDelete)})`,
+          );
+          const afterJsDelete = await dumpUntil((dump) => !dump.includes("js_set=from_js"));
+          check("cookie_js_delete_in_mirror", afterJsDelete.ok, afterJsDelete.dump);
+
+          // (c2) Rust deletes its cookie; JS sees it disappear.
+          await call("cookie_delete_rust", "cookie_delete", {
+            name: "rust_set",
+            domain: sandbox.host,
+            path: "/",
+          });
+          const afterRustDelete = await dumpUntil((dump) => !dump.includes("rust_set=from_rust"));
+          check("cookie_rust_delete_in_mirror", afterRustDelete.ok, afterRustDelete.dump);
+          const rustDeleteReadback = await sandboxUntil(
+            sandbox.frame,
+            (value) => !value.includes("rust_set=from_rust"),
+          );
+          check(
+            "cookie_rust_delete_visible_to_js",
+            rustDeleteReadback.ok,
+            `document.cookie=${JSON.stringify(rustDeleteReadback.value)}`,
+          );
+
+          // (d) clear_all_browsing_data empties the mirror.
+          await sandboxCall(
+            sandbox.frame,
+            "set",
+            "before_clear=1; path=/; SameSite=None; Secure",
+          );
+          const beforeClear = await dumpUntil((dump) => dump.includes("before_clear=1"));
+          check("cookie_before_clear_present", beforeClear.ok, beforeClear.dump);
+          await call("cookies_clear", "cookies_clear", {});
+          const afterClear = await dumpUntil((dump) => dump === "(no cookies)", 5000);
+          check("cookie_clear_all_empty", afterClear.ok, afterClear.dump);
+          await report(`cookies_after_clear_all: ${afterClear.dump}`);
+        }
+
         (async function main() {
           await call("greet", "greet", { name: "Qt" });
           await call("win_info", "win_info", {});
@@ -106,6 +395,12 @@
           await call("fullscreen_on", "set_fullscreen", { fullscreen: true });
           await call("win_info_after_fullscreen", "win_info", {});
           await call("fullscreen_off", "set_fullscreen", { fullscreen: false });
+
+          try {
+            await cookieSteps();
+          } catch (err) {
+            check("cookie_steps", false, `unexpected error: ${err}`);
+          }
 
           if (failures.length === 0) {
             document.title = "DEMO_OK";
