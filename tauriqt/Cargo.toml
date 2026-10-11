@@ -6,10 +6,21 @@ name = "tauriqt"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+tauri-build = { version = "2", default-features = false }
+
 [dependencies]
-cxx = "1"
-cxx-qt = "0.10"
+tauri = { version = "2", default-features = false }
+
+# Linux: the Qt runtime (Qt windowing + QtWebEngine).
+[target.'cfg(target_os = "linux")'.dependencies]
 tauri-runtime-qt = { path = "../tauri-runtime-qt" }
 
-[build-dependencies]
-cxx-qt-build = "0.10"
+# Windows / macOS: fall back to the stock wry runtime. Enabling the `wry`
+# feature only here keeps webkit2gtk / WebView2 out of the Linux build.
+[target.'cfg(any(target_os = "windows", target_os = "macos"))'.dependencies]
+tauri = { version = "2", default-features = false, features = ["wry"] }
+
+# Escape hatch for Linux: build the same app on wry (e.g. to compare engines).
+[features]
+wry = ["tauri/wry"]

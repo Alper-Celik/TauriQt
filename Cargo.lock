@@ -1987,8 +1987,10 @@ name = "tauri-runtime-qt"
 version = "0.1.0"
 dependencies = [
  "cookie",
- "dpi",
+ "cxx",
+ "cxx-build",
  "gtk",
+ "qt-build-utils",
  "raw-window-handle",
  "tauri-runtime",
  "tauri-utils",

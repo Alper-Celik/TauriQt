@@ -1,0 +1,34 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>TauriQt — IPC smoke</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 3rem;
+      }
+      #result {
+        font-size: 1.5rem;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TauriQt</h1>
+    <p id="result">calling invoke('greet') …</p>
+    <script>
+      const out = document.getElementById("result");
+      window.__TAURI_INTERNALS__
+        .invoke("greet", { name: "Qt" })
+        .then((msg) => {
+          out.textContent = msg;
+        })
+        .catch((err) => {
+          out.textContent = "invoke failed: " + err;
+        });
+    </script>
+  </body>
+</html>
