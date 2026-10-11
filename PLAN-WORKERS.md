@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # Parallel work plan — closing the coverage gaps
 
 Goal: implement the missing runtime surface with isolated workers (one git worktree each),
@@ -167,17 +170,21 @@ scripts/sway-oracle.sh
 
 ### Why the compositor is our oracle
 Wayland deliberately has no toplevel position: `xdg-shell` configure carries size + states only. So
-`inner_position`/`outer_position`/`set_position` stay `Err` **by design** (documented, not a gap),
-while the *compositor* knows the real rect and state — `swaymsg -t get_tree` therefore gives us an
-external oracle to assert that asymmetry, and to drive state changes (`fullscreen enable`, `focus`,
-`move`) that our app must then reflect. Protocol notes for future runtime work: `xdg-activation-v1`
-(would make `set_focus` reliable without a token), `xdg-toplevel-icon-v1` (would make `set_icon`
-real), `wlr-foreign-toplevel-management` (state + `set_rectangle` hints, still no position read).
+`inner_position`/`outer_position`/`set_position` cannot report the *real* placement and instead
+answer with Qt's record of what the app asked for (a client that refused the call outright broke
+`tauri-plugin-window-state` on Wayland, so the `Err` this plan originally specified is gone — see
+`docs/wayland-ci.md`). The *compositor* knows the real rect and state, so `swaymsg -t get_tree`
+gives us an external oracle for the difference, and the ability to drive state changes
+(`fullscreen enable`, `focus`, `move`) that our app must then reflect. Protocol notes for future
+runtime work: `xdg-activation-v1` (would make `set_focus` reliable without a token),
+`xdg-toplevel-icon-v1` (would make `set_icon` real), `wlr-foreign-toplevel-management` (state +
+`set_rectangle` hints, still no position read).
 
 ## Risks
 
-- **Qt/Wayland semantics**: absolute positioning, `always_on_top`, `skip_taskbar` are not
-  expressible on Wayland — W1 must return `Err` there, not fake success.
+- **Qt/Wayland semantics**: `always_on_top` and `skip_taskbar` are not expressible on Wayland — W1
+  must return `Err` there, not fake success. Absolute positioning is recorded rather than refused
+  (see above), because callers treat a position as always available.
 - **Cookies**: `QWebEngineCookieStore` is callback-only; blocking on the GUI thread deadlocks if
   the callback needs the GUI thread — W4 must pump a nested `QEventLoop` with a timeout.
 - **Handler wiring (W5)** touches tauri's semantics (navigation deny, new-window allow) — a wrong

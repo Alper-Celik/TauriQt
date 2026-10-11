@@ -48,10 +48,13 @@ fight the tooling.
 
 ## Conventions this repository expects
 
-- **REUSE is required and enforced** (`just lint-reuse`). A blanket `REUSE.toml`
-  (`path = ["**"]`, MIT, © 2026 Alper Çelik) already covers prose and data files, so a new
-  markdown file needs nothing; source files carry inline
-  `SPDX-FileCopyrightText` / `SPDX-License-Identifier` headers, matching their neighbours.
+- **REUSE is required and enforced** (`just lint-reuse`). Add
+  `SPDX-FileCopyrightText` / `SPDX-License-Identifier: MIT` to every new file that can hold a
+  comment — markdown gets the two-line HTML comment, shell gets it under the shebang,
+  `.gitignore`/`Cargo.toml` get `#` lines. `REUSE.toml` is only for formats that cannot
+  (JSON, generated lockfiles, binaries, captured probe dumps) and every entry there carries a
+  comment saying why; do not widen it to `path = ["**"]`, which would override the headers of
+  real files — including any third-party file that lands here.
 - Commits are expected as you go (this repo is agent-written; the history is the record).
   Keep the message about the behaviour, not the process.
 - Docs live beside the thing they describe: `docs/*-findings.md` for measurements,

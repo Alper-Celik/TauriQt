@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
 [workspace]
 members = ["tauriqt", "tauri-runtime-qt", "tauri-runtime-qt-core"]
 resolver = "2"

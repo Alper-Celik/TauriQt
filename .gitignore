@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
 .direnv
 result
 /build/

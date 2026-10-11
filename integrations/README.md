@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # Integrations — running other people's apps on this runtime
 
 Our own harnesses (`scripts/`, the flake checks) grade the app we wrote, which is why they

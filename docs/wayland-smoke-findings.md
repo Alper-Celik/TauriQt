@@ -3,6 +3,14 @@
 
 # Headless Wayland smoke — findings
 
+> **Superseded in one point (later on 2026-10-11):** items 4 below and the
+> `set_position` table record that the runtime returned `Err` for
+> `set_position`/`inner_position`/`outer_position` under Wayland. It no longer
+> does: positions are answered with Qt's record of the request, because refusing
+> them silently broke `tauri-plugin-window-state` (and with it the main window of
+> any app that creates it hidden) — see `docs/wayland-ci.md` and
+> `integrations/readest/README.md`. Everything else here stands as measured.
+
 What the Wayland-first harness (`scripts/sway-session.sh`, `scripts/sway-ci.conf`,
 `scripts/wayland-smoke.sh`) is, what it measured, and what it proved about running
 the Qt runtime under a headless Wayland compositor.

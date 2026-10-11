@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # Wayland CI: headless sway sessions as an external oracle
 
 Date: 2026-10-11 · Machine: aarch64 NixOS, agent firejail sandbox
@@ -6,11 +9,16 @@ Harness: `scripts/sway-oracle.sh` · Session primitive: `scripts/sway-session.sh
 
 ## Why a compositor
 
-Under Wayland the runtime deliberately returns `Err` for operations a compositor
-owns rather than guessing: `set_position`, `inner_position`, `outer_position`,
-`set_always_on_top`/`set_always_on_bottom`. That is correct — xdg-shell gives a
-client no way to place or stack a top-level window, and no way to read its global
-position afterwards. See [protocol facts](#protocol-facts-and-sources).
+Under Wayland the runtime refuses the operations a compositor owns rather than
+guessing: `set_always_on_top`/`set_always_on_bottom` return `Err`, because
+xdg-shell gives a client no stacking request. Positions are answered, not
+refused: `set_position` records the request (Qt's `move()` is a no-op for a
+Wayland toplevel) and `inner_position`/`outer_position` report that record, so
+callers that treat a position as always available — `tauri-plugin-window-state`,
+whose startup restore `show()`s Readest's hidden main window — keep working. The
+protocol still gives a client no way to *read* a toplevel's real position
+afterwards, which is what the compositor oracle below is for. See
+[protocol facts](#protocol-facts-and-sources).
 
 The compositor, however, *does* know the truth. A headless **sway** session is
 therefore two things at once:
@@ -33,9 +41,11 @@ $ scripts/sway-oracle.sh --no-build
   PASS compositor: real window rect 0,25 1280x695
   PASS compositor: fullscreen enable -> fullscreen_mode=1
   PASS compositor: move position 300 200 -> rect at 300,225
-== (b) positions: compositor rect vs our Err ==
+== (b) positions: compositor rect vs the position we recorded ==
   compositor (swaymsg -t get_tree) rect : 300,225 1028x722
-  runtime (win_info report)            : inner_position=ERR(... the 'wayland' Qt platform does not report top-level window positions)
+  runtime (win_info report)            : inner_position=0,0 outer_position=0,0
+  PASS runtime reports the position Qt recorded for the app (0,0: the demo asks for none)
+  PASS runtime answers position queries on wayland instead of the old Err
 == (c) multi-output + scale ==
   runtime monitors: available_monitors=2 | ... #1 name=Some("HEADLESS-1") pos=2560,0 size=1280x720 scale=2.0000
 == (d) X11-free proof ==
@@ -83,7 +93,7 @@ default footprint small.
 
 | Property          | sway `get_tree` | our runtime        | Note                                                   |
 | ----------------- | --------------- | ------------------ | ------------------------------------------------------ |
-| window rect / pos | **yes** (real)  | `Err`              | compositor owns placement; see below                   |
+| window rect / pos | **yes** (real)  | recorded request   | compositor owns placement, and the protocol has no position read; see below |
 | `focused`         | yes             | yes (`is_focused`) | compositor drives it                                   |
 | fullscreen        | yes             | yes                | both directions: app `set_fullscreen`, `swaymsg fullscreen enable` |
 | floating / tiled  | yes             | n/a                | compositor policy, not a client property               |
@@ -92,15 +102,23 @@ default footprint small.
 | always-on-top     | **no**          | `Err`              | no xdg-shell stacking request; Qt hint ignored         |
 | global cursor pos | **no**          | `Err`              | clients only learn pointer position from their own events |
 
-### Positions: yes
+### Positions: the compositor's rect, and what we tell the app
 
 `swaymsg -t get_tree` returns `rect {x,y,width,height}` for the toplevel. In a
 headless session the app window lands at a real coordinate, and once floated and
-`move position 300 200`'d the rect follows (`300,225 1028x722` here). Meanwhile
-the same run's `win_info` report is `inner_position=ERR(... the 'wayland' Qt
-platform does not report top-level window positions)`. Both sides are quoted by
-the harness, so the asymmetry is asserted, not assumed — and a fabricated
-numeric position would fail the check.
+`move position 300 200`'d the rect follows (`300,225 1028x722` here). The same
+run's `win_info` report is `inner_position=0,0 outer_position=0,0`: the demo asks
+for no position, and the runtime answers with Qt's record of the *request*
+instead of refusing (`Err`) or echoing a rect a client cannot read. Both sides
+are quoted by the harness, so the two facts are asserted together — a regression
+either to the old position `Err` or to a fabricated non-zero value fails the
+check.
+
+The residual gap is documented rather than papered over: the runtime cannot
+follow a compositor-driven move (`move position 300 200` above moved the rect, and
+`outer_position` still reports the app's own record), because xdg-shell has no
+request to read a toplevel's position. Applications that need the real geometry
+must ask their own compositor integration, not the client API.
 
 Even the closest thing Wayland has to a window list,
 `wlr-foreign-toplevel-management`, cannot read geometry: it exposes `title`,
@@ -188,10 +206,17 @@ works in a plain CI container that has Nix but no `/dev/dri` and no systemd.
   asserts the *compositor* rect and documents the gap instead of inventing an
   in-app reading. A re-invoke hook (or the T3 test-control channel) would close
   this; it was explicitly out of scope here.
-- **`DEMO_PARTIAL`, not `DEMO_OK`, is the Wayland pass state.** The demo treats
-  any embedded `=ERR(...)` as a failure, and the wayland position `Err`s are
-  correct behaviour, so the page ends at `DEMO_PARTIAL`. The oracle asserts the
-  *specific* expected `Err`s, which is stronger than a blanket "no errors".
+- **`DEMO_OK` is the Wayland pass state, and the harness requires it.** No field
+  of the demo's `win_info`/`monitors` results is legitimately unavailable on
+  Wayland: positions are answered (above) and the remaining `Err`s — always-on-top
+  / -bottom — are not probed by the page. `wayland-smoke.sh` therefore fails on a
+  `DEMO_PARTIAL` verdict, which is how a regression to the old position `Err`
+  would surface.
+- **The record an app gets is its own request, not the compositor's rect.** After
+  a compositor-driven move, `outer_position` still reports what the app asked for;
+  only the compositor knows where the window really is. Apps that saved geometry
+  (`tauri-plugin-window-state`) will therefore restore a position Wayland ignores
+  — harmless, and the same thing tao does.
 - **Multi-output scale is asserted at the API level.** With `HEADLESS-1`
   at scale 2 the runtime reports `scale=2.0000` and the physical size unchanged
   (`1280x720`), because Qt reports logical geometry (`640x360`) and the runtime

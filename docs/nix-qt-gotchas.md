@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # Nix ⇄ Qt ⇄ sandbox gotchas (all measured in this repo)
 
 Everything here was hit for real while building `tauri-runtime-qt`; each item cost at least one

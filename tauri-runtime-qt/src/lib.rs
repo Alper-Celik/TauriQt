@@ -15,8 +15,9 @@
 //!   `tauri::Builder::invoke_system`.
 //! - [`platform_name`]: which Qt platform plugin is running (`"wayland"`,
 //!   `"xcb"`, `"offscreen"`, …), for apps that must adapt to platform gaps —
-//!   a Wayland toplevel has no global coordinates, so the position getters and
-//!   `set_position` return errors there by design (docs/nix-qt-gotchas.md).
+//!   a Wayland compositor owns window placement and ignores the stacking hints,
+//!   while positions themselves are answered with Qt's record of the requested
+//!   value on every platform (docs/wayland-ci.md).
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU32, Ordering};
@@ -44,9 +45,11 @@ pub mod trace;
 /// Name of the platform plugin Qt is running on ("wayland", "xcb", "offscreen",
 /// …), or an empty string before the application exists.
 ///
-/// Apps use this to adapt to platform limitations rather than guess: on Wayland
-/// a toplevel has no global coordinates, so `inner_position`/`outer_position`
-/// and `set_position` return errors by design (see `docs/nix-qt-gotchas.md`).
+/// Apps use this to adapt to platform limitations rather than guess: a Wayland
+/// compositor owns window placement (so `always_on_top`/`always_on_bottom` are
+/// refused there) and ignores `set_position`'s `move()`, while positions are
+/// still answered with Qt's record of the requested value (see
+/// `docs/wayland-ci.md`).
 pub fn platform_name() -> String {
     ops::runtime::platform_name()
 }

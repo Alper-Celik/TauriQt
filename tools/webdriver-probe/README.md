@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # webdriver-probe — can ChromeDriver attach to QtWebEngine?
 
 Experiment (T1b of `PLAN-WORKERS.md`): point stock **ChromeDriver** at the

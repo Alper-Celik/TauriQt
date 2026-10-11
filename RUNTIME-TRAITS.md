@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # tauri-runtime-qt — Trait Implementation Inventory
 
 Extracted from `crates/tauri-runtime/src/{lib.rs,window.rs}` (tauri dev, 2026-10-11).

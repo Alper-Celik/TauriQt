@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # ChromeDriver attach against QtWebEngine — measured findings (T1b)
 
 Date: 2026-10-11 · Machine: aarch64 Linux (Wayland session, X11-capable), firejail sandbox

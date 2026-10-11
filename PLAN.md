@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # TauriQt — Plan
 
 Goal: a Qt-based runtime for Tauri 2 on Linux — Qt windowing (replace tao) + QtWebEngine

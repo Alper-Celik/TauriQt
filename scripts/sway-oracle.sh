@@ -5,17 +5,20 @@
 # sway-oracle.sh — drive the Qt runtime under a headless Wayland compositor and
 # use the *compositor* as an external oracle for window state.
 #
-# Why an oracle: under Wayland the runtime deliberately returns `Err` for
-# top-level position (`set_position`, `inner_position`, `outer_position`) and for
-# always-on-top / always-on-bottom, because xdg-shell has no global position and
-# no stacking request. Those are honest protocol limits, not bugs. The sway
-# compositor still knows the truth, so it can check our reporting from the
-# outside and can also drive state changes we do not control:
+# Why an oracle: under Wayland a compositor owns placement, so the runtime
+# refuses only what xdg-shell cannot express (always-on-top / always-on-bottom),
+# and it answers position queries with *Qt's record of the position the app asked
+# for* — the protocol has no request to read a toplevel's real position, so no
+# client call can return the compositor's rect. The compositor knows the truth,
+# so it can check our reporting from the outside and can also drive state
+# changes we do not control:
 #
 #   (a) state oracle  — rect / focused / fullscreen_mode / floating / app_id from
 #                       `swaymsg -t get_tree`, plus compositor-driven fullscreen,
 #                       focus and move (floating + `move position`).
-#   (b) positions     — compositor rect vs our `Err` for inner/outer position.
+#   (b) positions     — compositor rect (real) vs the position we recorded: the
+#                       demo asks for none, so the origin, even after the
+#                       compositor has moved the window.
 #   (c) outputs+scale — two headless outputs, one at scale 2, vs the demo's
 #                       `monitors` command.
 #   (d) x11-free      — `xwayland disable` + TAURIQT_PROXY_DEBUG=1 must report
@@ -563,10 +566,10 @@ check_title_oracle() {
   fi
 }
 
-# ---- check (b): position asymmetry -----------------------------------------
+# ---- check (b): positions: recorded request vs compositor rect ---------------
 
 check_positions() {
-  section "(b) positions: compositor rect vs our Err"
+  section "(b) positions: compositor rect vs the position we recorded"
 
   local node rect
   node="$(app_tree)"
@@ -575,10 +578,9 @@ check_positions() {
     rect="$(jq -r '.rect | "\(.x),\(.y) \(.width)x\(.height)"' <<<"$node")"
   echo "  compositor (swaymsg -t get_tree) rect : ${rect:-<no mapped toplevel>}"
 
-  local err
-  err="$(grep -oE 'inner_position=ERR\([^)]*\)' "$APP_LOG" | head -1)"
-  [[ -z "$err" ]] && err="$(grep -oE 'outer_position=ERR\([^)]*\)' "$APP_LOG" | head -1)"
-  echo "  runtime (win_info report)            : $err"
+  local recorded
+  recorded="$(grep -oE '(inner|outer)_position=[0-9-]+,[0-9-]+' "$APP_LOG" | head -2 | tr '\n' ' ')"
+  echo "  runtime (win_info report)            : ${recorded:-<none>}"
 
   if [[ -n "$rect" ]]; then
     pass "compositor reports a real rect"
@@ -589,16 +591,21 @@ check_positions() {
     fail "compositor rect unavailable"
   fi
 
-  if grep -qF "the 'wayland' Qt platform does not report top-level window positions" "$APP_LOG"; then
-    pass "runtime returns Err for inner/outer_position on wayland (honest asymmetry)"
+  # Our half of the asymmetry: the runtime answers with the position the app
+  # asked for (the demo asks for none, so the origin) instead of an `Err`, and it
+  # cannot follow a compositor-driven move — the protocol has no position read.
+  # That is why the compositor rect above is the oracle for placement and the
+  # recorded value is the oracle for what the app was told.
+  if grep -qE 'inner_position=0,0' "$APP_LOG" && grep -qE 'outer_position=0,0' "$APP_LOG"; then
+    pass "runtime reports the position Qt recorded for the app (0,0: the demo asks for none)"
   else
-    fail "runtime did not return the expected wayland position Err"
+    fail "runtime did not report the recorded position (0,0) on wayland"
   fi
 
-  if grep -qE 'inner_position=[0-9-]+,[0-9-]+' "$APP_LOG"; then
-    fail "runtime reported a fabricated inner_position instead of Err"
+  if grep -qF "does not report top-level window positions" "$APP_LOG"; then
+    fail "runtime still returns the removed wayland position Err"
   else
-    pass "runtime did not fabricate a position value"
+    pass "runtime answers position queries on wayland instead of the old Err"
   fi
 }
 

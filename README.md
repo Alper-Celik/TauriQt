@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # TauriQt
 
 A **Qt-based runtime for Tauri 2 on Linux**: Qt windowing replaces tao, QtWebEngine
@@ -155,9 +158,14 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
 ## Known limits (structural, not bugs in progress)
 
-- **Wayland has no global window coordinates.** `inner_position`, `outer_position` and
-  `set_position` return `Err` there by design; the runtime reports it rather than
-  fabricating a value. `platform_name()` tells an app whether to expect that.
+- **Wayland has no global window coordinates.** A compositor owns placement, so
+  `set_position` only records the position on Wayland (X11 asks the window
+  manager), and `inner_position`/`outer_position` answer with Qt's record of what
+  the app asked for rather than a compositor-reported value — the protocol has no
+  request to read one. They never fail: callers such as
+  `tauri-plugin-window-state` treat a position as always available and abort their
+  startup restore on the first `Err`. `platform_name()` tells an app which
+  platform it is on.
 - **Invoke payloads travel in a header** (`X-Tauriqt-Payload`), because QtWebEngine never
   exposes custom-protocol request bodies — hence `INVOKE_SYSTEM_SCRIPT` above.
 - Linux-only by construction; the demo falls back to wry elsewhere or with `--features wry`.
@@ -168,5 +176,6 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 ## Licence
 
 MIT (`LICENSES/MIT.txt`). [REUSE](https://reuse.software/) compliance is enforced by
-`just lint-reuse`: a blanket [`REUSE.toml`](REUSE.toml) covers the prose files, and the
-source files carry inline SPDX headers.
+`just lint-reuse`: every file that can hold a comment carries inline SPDX tags (markdown and
+shell included), and [`REUSE.toml`](REUSE.toml) annotates only what cannot — generated
+lockfiles, JSON, a binary icon, and the captured probe artifacts — each group with its reason.

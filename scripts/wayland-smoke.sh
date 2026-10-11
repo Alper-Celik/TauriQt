@@ -7,11 +7,13 @@
 # runs the sample app inside it on Qt's Wayland platform plugin, and asserts the
 # same runtime traces scripts/smoke.sh checks, plus the Wayland-specific
 # expectations: no X11 platform fallback, and the `Err`s Wayland makes
-# unavoidable (window placement, on-top/bottom state) are *correct* behaviour.
+# unavoidable (on-top/bottom state) are *correct* behaviour. Positions are not
+# among them: the compositor owns the real placement, but the runtime answers
+# position queries with the value Qt recorded for the app.
 #
 # Usage:
 #   scripts/wayland-smoke.sh [--timeout S] [--outputs N] [--scale S]
-#                            [--screenshot PATH] [--proxy-debug] [--strict-demo-ok]
+#                            [--screenshot PATH] [--proxy-debug]
 #                            [--skip-build] [--keep-session]
 #
 # Exit code 0 only if every expectation matched.
@@ -54,7 +56,6 @@ SCALE=1
 SCREENSHOT=""
 PROXY_DEBUG="${TAURIQT_PROXY_DEBUG:+1}"
 PROXY_DEBUG="${PROXY_DEBUG:-0}"
-STRICT_DEMO=0
 SKIP_BUILD="${SMOKE_SKIP_BUILD:-0}"
 KEEP_SESSION="${WAYLAND_SMOKE_KEEP:-0}"
 
@@ -73,9 +74,6 @@ Usage: scripts/wayland-smoke.sh [options]
   --proxy-debug      run with TAURIQT_PROXY_DEBUG=1 and assert the proxy probe
                      (native state, display_handle()/window_handle(), probe
                      events through the sink, clean exit 0)
-  --strict-demo-ok   require the demo page's own DEMO_OK verdict (the shipped
-                     page reports DEMO_PARTIAL under Wayland because it counts
-                     the unavoidable position Err as failures)
   --skip-build       reuse the existing ./target/debug/tauriqt
   --keep-session     leave the sway session running after the run
   -h, --help         this text
@@ -113,10 +111,6 @@ while (($#)); do
     PROXY_DEBUG=1
     shift
     ;;
-  --strict-demo-ok)
-    STRICT_DEMO=1
-    shift
-    ;;
   --skip-build)
     SKIP_BUILD=1
     shift
@@ -147,36 +141,6 @@ done
 }
 
 # ------------------------------------------------------------ demo acceptance
-
-# demo_partial_is_wayland_expected <reasons>
-#
-# The demo page turns every `X=ERR(...)` field of a result into a failure entry
-# and joins them with " | ". Under Wayland only the toplevel-geometry fields can
-# legitimately fail (a compositor owns placement), so accept a DEMO_PARTIAL whose
-# entries are nothing but `inner_position`/`outer_position` errors that name the
-# Wayland platform — and reject anything else.
-demo_partial_is_wayland_expected() {
-  local entry rest="$1" entries=0 all_errs pos_errs
-  while [[ -n "$rest" ]]; do
-    if [[ "$rest" == *" | "* ]]; then
-      entry="${rest%% | *}"
-      rest="${rest#* | }"
-    else
-      entry="$rest"
-      rest=""
-    fi
-    entries=$((entries + 1))
-    case "$entry" in
-    win_info\ -\>\ * | win_info_after_fullscreen\ -\>\ *) ;;
-    *) return 1 ;;
-    esac
-    [[ "$entry" == *"'wayland' Qt platform does not report top-level window positions"* ]] || return 1
-    all_errs="$(grep -o '=ERR(' <<<"$entry" | wc -l)"
-    pos_errs="$(grep -o 'position=ERR(' <<<"$entry" | wc -l)"
-    [[ "$all_errs" == "$pos_errs" ]] || return 1
-  done
-  ((entries > 0))
-}
 
 # ------------------------------------------------------------------- workspace
 
@@ -408,8 +372,12 @@ expect "] webview 'main' created"
 expect "tauri GET tauri://localhost/ -> 200"
 expect "ipc POST ipc://localhost/greet -> 200"
 # Wayland-native: the runtime must be on the Wayland platform plugin (the demo's
-# own error text names it) and must never fall back to X11.
-expect "the 'wayland' Qt platform does not report top-level window positions"
+# own `platform` report names it) and must never fall back to X11. Positions are
+# answered on every platform now, so they can no longer be the tell — the demo
+# asks for none, so the record is the origin.
+expect "[tauriqt-demo] platform=wayland"
+expect "inner_position=0,0"
+expect "outer_position=0,0"
 expect_absent 'Could not load the Qt platform plugin'
 expect_absent "is not implemented yet"
 
@@ -438,24 +406,15 @@ else
     echo "  ok   : demo verdict: DEMO_OK"
     ;;
   DEMO_PARTIAL:*)
-    if [[ "$STRICT_DEMO" == 1 ]]; then
-      echo "  FAIL : demo verdict: DEMO_PARTIAL (--strict-demo-ok requires DEMO_OK)"
-      failures=$((failures + 1))
-    elif demo_partial_is_wayland_expected "${verdict#DEMO_PARTIAL: }"; then
-      echo "  ok   : demo verdict: DEMO_PARTIAL, limited to Wayland-unavailable geometry"
-      note "accepted reasons: ${verdict#DEMO_PARTIAL: }"
-    else
-      echo "  FAIL : demo verdict: DEMO_PARTIAL for reasons other than Wayland geometry"
-      echo "         ${verdict#DEMO_PARTIAL: }"
-      failures=$((failures + 1))
-    fi
+    echo "  FAIL : demo verdict: DEMO_PARTIAL — every win_info/monitors field must answer on Wayland"
+    echo "         ${verdict#DEMO_PARTIAL: }"
+    failures=$((failures + 1))
     ;;
   *)
     echo "  FAIL : demo verdict: no DEMO_OK/DEMO_PARTIAL title in the log"
     failures=$((failures + 1))
     ;;
   esac
-  [[ "$STRICT_DEMO" == 1 ]] && expect_absent "DEMO_PARTIAL"
   expect "ipc POST ipc://localhost/win_info -> 200"
   expect "ipc POST ipc://localhost/monitors -> 200"
 fi

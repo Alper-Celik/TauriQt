@@ -1,3 +1,6 @@
+<!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
+<!-- SPDX-License-Identifier: MIT -->
+
 # Readest on the Qt runtime
 
 [Readest](https://github.com/readest/readest) is a large, real Tauri 2 app — an ebook

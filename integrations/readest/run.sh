@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
 # Run Readest on the Qt runtime, with QtWebEngine's DevTools protocol open so a
 # driver can attach (this runtime has no WebDriver backend of its own — see
 # README.md).
