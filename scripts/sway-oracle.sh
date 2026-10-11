@@ -323,6 +323,7 @@ dump_tree() {
   swaymsg -t get_tree -r >"$file" 2>/dev/null || true
   echo "  info tree dump         : $file ($(wc -c <"$file" 2>/dev/null || echo 0) bytes)"
   echo "  info xdg_shell nodes   : $(jq '[.. | objects | select(.shell? == "xdg_shell")] | length' "$file" 2>/dev/null || echo '?')"
+  echo "  info outputs           : $(jq -r '[.. | objects | select(.type? == "output") | .name] | join(" ")' "$file" 2>/dev/null || echo '?')"
   jq -r '[.. | objects | select(has("pid"))
           | "type=\(.type // "-") shell=\(.shell // "-") app_id=\(.app_id // "-") pid=\(.pid) name=\((.name // "-") | .[0:28])"] | .[]' \
     "$file" 2>/dev/null | head -12 | sed 's/^/  info node              : /'
