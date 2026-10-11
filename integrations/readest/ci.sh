@@ -56,19 +56,23 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-# Up to 30 min: the first build is a full link, and the app is a *grandchild*
-# of this script (run.sh -> tauri -> cargo -> Readest), so its pid is not a
-# liveness signal — a vanished $run_pid used to abort the wait while the app was
-# already serving. Only give up when no Readest process is left at all.
+# Up to 30 min. The app is a *grandchild* of this script (run.sh -> tauri ->
+# cargo -> Readest), so `$run_pid` is not a liveness signal, and neither is the
+# binary alone: while the build runs there is no `Readest` yet, only `cargo`.
+# "Dead" therefore means the whole chain is gone — checked twice, five seconds
+# apart, so a short gap between cargo and the binary is not mistaken for a crash.
+chain_alive() {
+  pgrep -f 'tauri.js dev|target/debug/Readest|cargo run' >/dev/null
+}
 ready=0
 for _ in $(seq 1 360); do
   if curl -sf "http://127.0.0.1:$CDP_PORT/json/list" 2>/dev/null | grep -q ':3000'; then
     ready=1
     break
   fi
-  if ! pgrep -f 'target/debug/Readest' >/dev/null; then
+  if ! chain_alive; then
     sleep 5
-    pgrep -f 'target/debug/Readest' >/dev/null || break
+    chain_alive || break
   fi
   sleep 5
 done
