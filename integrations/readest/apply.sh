@@ -30,9 +30,18 @@ git -C "$checkout" clean -qfd
 git -C "$checkout" apply "$here/readest-qt-runtime.patch"
 sed -i "s|@TAURIQT_RUNTIME@|$runtime|" "$checkout/apps/readest-app/src-tauri/Cargo.toml"
 
-# Readest keeps its vendored tauri fork, the turso plugin, foliate-js and
-# friends as submodules; the Rust workspace does not load without them.
-git -C "$checkout" submodule update --init --recursive
+# Readest keeps the tauri it builds against, and some path dependencies, in
+# submodules. Only this set is needed here: `packages/tauri` is what the root
+# [patch.crates-io] resolves `tauri` to, the two plugins are path dependencies
+# of src-tauri, and `foliate-js` is a pnpm workspace package of the frontend.
+# (Not listed: qcms/js-mdict/simplecc-wasm — not workspace members, and install
+# resolves without them — nor .claude/skills/gstack, nor OpenCC, which only
+# `--recursive` would drag in.)
+git -C "$checkout" submodule update --init \
+  packages/tauri \
+  packages/foliate-js \
+  apps/readest-app/src-tauri/plugins/tauri-plugin-turso \
+  apps/readest-app/src-tauri/plugins/tauri-plugin-webview-upgrade
 
 echo "readest $READEST_SHA patched; qt runtime -> $runtime"
 echo "next: integrations/readest/run.sh (from this repo's nix dev shell)"
