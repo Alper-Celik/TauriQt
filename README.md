@@ -121,6 +121,21 @@ same harnesses run locally through the recipes:
 The demo page turns the result into a `DEMO_OK` / `DEMO_PARTIAL` window title, which the
 harnesses read — so the app grades itself, on the platform it is running on.
 
+### Other people's apps
+
+Everything above grades *our* app, which is why it is suspect by construction.
+[`integrations/`](integrations/) runs other people's Tauri apps on this runtime instead, so
+their code and their tests are the judge — currently
+[Readest](integrations/readest/README.md): it boots on this runtime, its `invoke()` reaches
+its own Rust, and **its own suite passes (183 tests)**.
+
+The list lives in [`integrations/apps.json`](integrations/apps.json) and drives a CI job of
+its own, gated to the nightly/dispatch triggers because each app is a full build. Adding an
+app is a directory plus an entry in that file — see
+[`integrations/README.md`](integrations/README.md) for the convention and the traps we hit
+(checkout outside this cargo workspace, several GB, and prefer CDP over WebDriver: QtWebEngine
+cannot create a second target, so WebDriver-driven suites are protocol-blocked).
+
 ## Known limits (structural, not bugs in progress)
 
 - **Wayland has no global window coordinates.** `inner_position`, `outer_position` and
