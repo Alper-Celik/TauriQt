@@ -40,6 +40,15 @@ machine whose own desktop session is X11/xcb.
    list, and it is deliberate: the alternative is a check that fails for a correct
    reason on every Wayland run.
 
+5. **A Nix *build sandbox* cannot map a toplevel at all — and that is the
+   environment, not the runtime.** The flake checks run in a sandbox with no
+   `/dev/dri`; without EGL Qt cannot composite the QtWebEngine widget tree
+   (`EGL not available` → `Failed to create QRhi for QBackingStoreRhiSupport`), so
+   the client never commits a `wl_buffer` and the compositor legitimately sees no
+   view. The harnesses keep their compositor/paint assertions and *skip* them only
+   under that quoted proof (fail-closed); `--require-mapping` on the oracle forbids
+   skipping for machines that can map. Full evidence: §5 below.
+
 ## Files
 
 | file | role |
@@ -253,6 +262,106 @@ not observed at runtime (`tauri-runtime-qt/src/ops/window.rs`, `unavailable()` a
 | `set_always_on_top` (`:406`) | `tauri-runtime-qt: always-on-top is unavailable: the 'wayland' Qt platform has no on-top state (Wayland compositors ignore Qt::WindowStaysOnTopHint, QTBUG-73456)` |
 | `set_always_on_bottom` (`:391`) | `tauri-runtime-qt: always-on-bottom is unavailable: the 'wayland' Qt platform has no on-bottom state (a Wayland compositor does not expose one)` |
 
+### 5. Nix build sandbox: no `/dev/dri` ⇒ no EGL ⇒ no mapped toplevel
+
+Measured inside the Nix build sandbox — the environment the flake checks actually
+run in, and *not* the firejail the rest of this document was measured in: **it has
+no `/dev/dri` at all** (the firejail has the device nodes and merely denies access
+to them). That difference decides the whole picture.
+
+The compositor there sees the client's toplevel but never a mapped view:
+
+```
+$ LD_LIBRARY_PATH= nix build .#checks.aarch64-linux.sway-oracle --no-link -L
+  FAIL compositor sees no xdg_shell toplevel for the app
+  info xdg_shell nodes   : 0
+```
+
+while sway's own debug log (the oracle runs sway with `-d`) shows the client *did*
+create its toplevel — and the app is otherwise entirely healthy (`title=DEMO_OK`,
+all 15 IPC commands answer 200, `win_info … is_visible=true`, monitors/scale
+correct, `TAURIQT_PROXY_DEBUG` still reports `platform=wayland` with a real Wayland
+surface handle):
+
+```
+00:00:00.608 [DEBUG] [sway/desktop/xdg_shell.c:559] New xdg_shell toplevel title='(null)' app_id='(null)'
+```
+
+Why nothing maps, in Qt's own words from that run (`qtbase 6.11.2`; requires
+`QT_FORCE_STDERR_LOGGING=1`, see below — without it Qt logs through syslog, not
+stderr, because the harness runs the app under `setsid` with stdio redirected):
+
+```
+qt.qpa.wayland: Available client buffer integrations: QList("wayland-egl")
+qt.qpa.wayland: Initializing client buffer integration "wayland-egl"
+qt.qpa.wayland: EGL not available
+QRhiGles2: Failed to create temporary context
+QRhiGles2: Failed to create context
+Failed to create RHI for backend: OpenGL
+qt.widgets.painting: Tree with root QQuickWidget(0x…) evaluates to flushing with QRhi
+qt.widgets.painting: Recreating QWidgetWindow(0x…, name="mainWindow") with current type QSurface::RasterSurface to support QSurface::OpenGLSurface
+Failed to create QRhi for QBackingStoreRhiSupport
+qt.widgets.painting: Flushing QRegion(0,0 1024x768) of QWidget(0x…, name="main") to QWidgetWindow(0x…, name="mainWindow") using RHI
+QQuickWidget: Attempted to render scene with no rhi
+```
+
+The chain, each step verified against the Qt sources:
+
+1. `QWebEngineView` is a `QQuickWidget` — verified: `libQt6WebEngineWidgets.so.6.11.2`
+   references `QQuickWidget::paintEvent`/`setContent`/`qt_metacast`/… — i.e. a
+   render-to-texture child. `QWidgetRepaintManager` therefore flushes the *top-level
+   window* through `QPlatformBackingStore::rhiFlush()` rather than the raster path,
+   and Qt recreates the `QWidgetWindow` as an `OpenGLSurface` window
+   (`qwidget.cpp` `q_evaluateRhiConfig*()`; `qwidgetrepaintmanager.cpp:1051`).
+2. That path needs a QRhi with a GL/EGL backend. With no DRM device QtWayland's
+   `wayland-egl` client buffer integration cannot initialise
+   (`EGL not available`, `qwaylandeglclientbufferintegration.cpp`), so both
+   `QRhi::create(OpenGLES2)` and `QBackingStoreRhiSupport::create()` fail.
+3. `QBackingStoreDefaultCompositor::flush()` then returns
+   `QPlatformBackingStore::FlushFailed` **silently** — its first statement is
+   `if (!rhi || !swapchain) return QPlatformBackingStore::FlushFailed;`
+   (`src/gui/painting/qbackingstoredefaultcompositor.cpp`) — so Qt never attaches a
+   `wl_buffer`. Sway inserts a view into its tree only from `view_map`, i.e. on the
+   first committed buffer (`sway/tree/view.c`, `sway/desktop/xdg_shell.c`), so
+   `get_tree` correctly reports no toplevel at all.
+4. `grim` agrees at the pixel level: with `--screenshot` that session's capture is
+   byte-identical to the empty-session baseline (2759 bytes, one black colour, 0
+   painted pixels), while the same command on a machine with a GL path reports
+   `capture differs from the empty-session baseline … the client painted`
+   (545 distinct colours).
+
+So this is an **environment limit of a GL-less sandbox, not a runtime gap**: the
+client creates its window, stays healthy and reports truthfully — it just cannot
+composite anything into a surface. Nothing in the runtime can conjure up the missing
+DRM device, and the same app + harness map (and paint) the window wherever EGL
+exists.
+
+#### What the checks do about it
+
+The assertions are kept; only the *environment* is allowed to excuse them, and only
+with the proof quoted above:
+
+- `scripts/wayland-smoke.sh --screenshot` (what the flake check runs) keeps the
+  paint assertion. A capture identical to the empty baseline is a **FAIL** — unless
+  the same run proves it could not paint (no `/dev/dri`, plus Qt's
+  `EGL not available` *and* `Failed to create QRhi for QBackingStoreRhiSupport`), in
+  which case it prints a `SKIP` line quoting that evidence and reports
+  `N expectations checked: M passed, K skipped`. Fail-closed: if the evidence does
+  not hold, the old failure stands.
+- `scripts/sway-oracle.sh` keeps every compositor assertion (rect, focused, app_id,
+  fullscreen, move position, floating, title) and skips the compositor-visible half
+  only under the same proof — quoting Qt's `EGL not available`, the failed QRhi, the
+  client's toplevel from sway's log and `mapped xdg_shell views … (the client never
+  committed a buffer)`. `--require-mapping` / `ORACLE_REQUIRE_MAPPING=1` forbids
+  skipping, for machines that can map. Because the gate requires the client's
+  toplevel to exist in sway's log, a genuine "the runtime stopped showing the
+  window" regression still fails.
+- Both harnesses now set `QT_FORCE_STDERR_LOGGING=1` (plus
+  `QT_LOGGING_RULES=qt.widgets.painting=true`) for the app: Qt routes its log through
+  syslog when it has no controlling TTY and stderr is not a terminal
+  (`qtbase: shouldLogToStderr()`, `syslog_default_message_handler`), which had made
+  every Qt-side message — including the ones above — invisible in the app log.
+
 ## Minimal environment
 
 What the working setup actually needs (everything else is optional polish):
@@ -324,6 +433,30 @@ runs and a `--outputs 2 --scale 2` run all exited 0 here; after them `ps` showed
 
 ## Limits of this evidence
 
+- Everything except §5 was measured in the agent firejail, *not* in the Nix build
+  sandbox the checks run in; §5 is the one section measured inside the build, and it
+  is where the "no toplevel" behaviour lives. The two environments differ in exactly
+  one way that matters here: the build sandbox has no `/dev/dri` (and therefore no
+  EGL/GL path), the firejail has the nodes but denies access to them.
+- The compositor assertions in `scripts/sway-oracle.sh` and the paint assertion in
+  `scripts/wayland-smoke.sh --screenshot` are therefore only *exercised* on a
+  machine with a GL path (or a build sandbox given one); in the GL-less sandbox they
+  report `SKIP` with the evidence. Their positive path is the one the earlier
+  sections of this document record (37/0 and "the client painted"), not something
+  reproducible in the sandbox.
+- **`app_id` is empty when the window *does* map** (measured on the firejail, where
+  every other compositor assertion passes): `swaymsg -t get_tree` reports
+  `{"app_id":"", "name":"TauriQt — demo title", …}`. Qt derives the Wayland app-id
+  from `QGuiApplication::desktopFileName()`, else from the *executable file path*
+  (`qwaylandwindow.cpp`: `QFileInfo(applicationFilePath()).baseName()`, plus the
+  reverse-domain prefix from `organizationDomain()`). The runtime hands Qt a
+  fabricated `argv[0]` (`qt_app.cpp`: `static char argv0[] = "tauri-runtime-qt"`), so
+  Qt cannot resolve an application file path and `set_app_id("")` goes out. Fixing it
+  means passing the real argv through the cxx bridge (or calling
+  `QGuiApplication::setDesktopFileName()`); until then the oracle's
+  `compositor: app_id=…` assertion fails on machines that can map — the one gap this
+  change does not close, and the reason the assertion is *skipped* (never *passed*)
+  in the GL-less build sandbox.
 - No GPU/EGL/GL path was exercised (pixman + headless by design); `--use-gl=…`
   settings are untested and unnecessary here.
 - No input devices (`WLR_LIBINPUT_NO_DEVICES=1`), so pointer/keyboard-driven

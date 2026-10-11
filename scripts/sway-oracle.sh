@@ -21,6 +21,15 @@
 #   (d) x11-free      — `xwayland disable` + TAURIQT_PROXY_DEBUG=1 must report
 #                       `platform=wayland`; nothing falls back to xcb.
 #
+# Environment limit (measured, see docs/wayland-smoke-findings.md): with no GL
+# path at all — a Nix build sandbox has no /dev/dri — Qt cannot composite the
+# QtWebEngine widget tree into the surface (QWebEngineView is a QQuickWidget, so
+# the top level flushes through QRhi, and `QBackingStoreDefaultCompositor::flush`
+# returns FlushFailed silently when EGL is unavailable). The client then never
+# commits a buffer, so the compositor has no mapped view to be an oracle about.
+# The harness detects that *condition* and reports the compositor assertions as
+# SKIP with the evidence; on a machine that can composite they run for real.
+#
 # The session bootstrap is intentionally self-contained (private XDG_RUNTIME_DIR,
 # SWAYSOCK, WLR_BACKENDS=headless, WLR_RENDERER=pixman, WLR_HEADLESS_OUTPUTS) so
 # this file runs standalone; it does not require a sibling helper. See
@@ -34,9 +43,17 @@
 #   --app PATH       app binary to run                          (default target/debug/tauriqt)
 #   --keep           leave sessions behind for debugging        (default: clean up)
 #   --no-build       skip the build step (reuse the existing binary)
+#   --require-mapping  never skip the compositor assertions (use this on a
+#                    machine with a GL path; a missing toplevel is then a failure)
 #
-# Env overrides: SWAY_BIN (store path of a sway build), ORACLE_SKIP_BUILD=1.
+# Env overrides: SWAY_BIN (store path of a sway build), ORACLE_SKIP_BUILD=1,
+# ORACLE_REQUIRE_MAPPING=1.
 # Exit code 0 only if every assertion passed and no session leaked.
+#
+# In a sandbox with no GL path at all (no /dev/dri, e.g. a Nix build sandbox) the
+# compositor cannot see the window: see "compositor visibility" below and
+# docs/wayland-smoke-findings.md. Those assertions are then SKIPped with the
+# evidence, never silently dropped.
 
 set -uo pipefail
 
@@ -50,6 +67,7 @@ APP_TIMEOUT=18
 APP="${APP:-${TAURIQT_BIN:-$ROOT/target/debug/tauriqt}}"
 KEEP=0
 BUILD=1
+REQUIRE_MAPPING="${ORACLE_REQUIRE_MAPPING:-0}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -58,6 +76,7 @@ while [[ $# -gt 0 ]]; do
     --app) APP="$2"; shift 2 ;;
     --keep) KEEP=1; shift ;;
     --no-build) BUILD=0; shift ;;
+    --require-mapping) REQUIRE_MAPPING=1; shift ;;
     -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
     *) echo "sway-oracle: unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -77,6 +96,7 @@ WORK="$(mktemp -d "${TMPDIR:-/tmp}/tauriqt-oracle.XXXXXX")"
 
 FAILURES=0
 PASS_OUT=0
+SKIPPED=0
 
 # nixpkgs' sway wrapper execs an *absolute* `dbus-run-session` when
 # DBUS_SESSION_BUS_ADDRESS is unset, and dbus-daemon's compiled-in config is the
@@ -101,6 +121,7 @@ ensure_session_bus() {
 
 pass() { printf '  \033[32mPASS\033[0m %s\n' "$1"; PASS_OUT=$((PASS_OUT + 1)); }
 fail() { printf '  \033[31mFAIL\033[0m %s\n' "$1"; FAILURES=$((FAILURES + 1)); }
+skip() { printf '  \033[33mSKIP\033[0m %s\n' "$1"; SKIPPED=$((SKIPPED + 1)); }
 info() { printf '  info %s\n' "$1"; }
 section() { printf '\n== %s ==\n' "$1"; }
 
@@ -239,7 +260,8 @@ app_start() {
   local -a passthrough=()
   local var
   for var in QTWEBENGINE_CHROMIUM_FLAGS LIBGL_ALWAYS_SOFTWARE QT_OPENGL FONTCONFIG_FILE \
-    TAURIQT_TRACE TAURIQT_EXIT_AFTER_MS TAURIQT_PROXY_DEBUG TAURIQT_SCREEN_DEBUG; do
+    QT_LOGGING_RULES QT_FORCE_STDERR_LOGGING TAURIQT_TRACE TAURIQT_EXIT_AFTER_MS \
+    TAURIQT_PROXY_DEBUG TAURIQT_SCREEN_DEBUG; do
     [[ -n "${!var:-}" ]] && passthrough+=("$var=${!var}")
   done
 
@@ -253,6 +275,12 @@ app_start() {
     launch=(bash -c 'cd "$1" && exec env LD_LIBRARY_PATH= nix develop -c "$2"' _ "$ROOT" "$APP")
   fi
 
+  # Qt's own statement of how the window is flushed is evidence: when the
+  # compositor cannot see the window, the skip has to quote a reason. The app is
+  # run under `setsid` with stdio redirected, i.e. without a controlling TTY, and
+  # Qt then routes its log through syslog instead of stderr
+  # (qtbase: shouldLogToStderr()/syslog_default_message_handler), so the harness
+  # has to force stderr logging to see any of it.
   env -i \
     PATH="$PATH" HOME="$HOME" USER="${USER:-alper}" \
     XDG_RUNTIME_DIR="$SESS_XDG" \
@@ -260,6 +288,8 @@ app_start() {
     SWAYSOCK="$SESS_SOCK" \
     QT_QPA_PLATFORM=wayland \
     QTWEBENGINE_CHROMIUM_FLAGS=--no-sandbox \
+    QT_FORCE_STDERR_LOGGING=1 \
+    QT_LOGGING_RULES=qt.widgets.painting=true \
     "${passthrough[@]}" \
     "${extra_env[@]}" \
     setsid timeout -k 2 "$APP_TIMEOUT" \
@@ -336,6 +366,51 @@ dump_tree() {
   fi
 }
 
+# ---- compositor visibility (why a toplevel may never map here) ---------------
+
+# QtWebEngine's QWebEngineView is a QQuickWidget — a render-to-texture child —
+# so Qt composites the top-level window through its QRhi path ("Flushing …
+# using RHI" in the `qt.widgets.painting` log) and recreates the platform window
+# as an OpenGLSurface. That needs a GL/EGL backend. With no DRM device at all (a
+# Nix build sandbox has no /dev/dri) Mesa cannot bring up EGL, Qt's
+# `QBackingStoreDefaultCompositor::flush()` returns FlushFailed *silently*, and the
+# client never attaches a wl_buffer: the compositor therefore sees the
+# xdg_toplevel the client created, but never a *mapped* view, and `get_tree`
+# shows nothing.
+#
+# That is an environment limit, not a runtime bug — the same app and harness map
+# the window on a machine with a GL path. The assertions below run whenever a
+# toplevel maps and are skipped only when this *proof* holds (fail-closed: any
+# missing piece and the missing toplevel fails the check as before).
+# ORACLE_REQUIRE_MAPPING=1 (--require-mapping) forbids skipping: use it on a
+# machine that can composite, to keep the assertions honest.
+
+# mapping_impossible_reason — prints an evidence-backed one-liner when this
+# environment provably cannot map a toplevel, nothing (non-zero) otherwise.
+mapping_impossible_reason() {
+  [[ -n "$(ls -A /dev/dri 2>/dev/null)" ]] && return 1
+  local egl rhi toplevel
+  egl="$(grep -aoE 'EGL not available|Failed to initialize EGL display[^;]*' "$APP_LOG" 2>/dev/null | head -1)"
+  [[ -n "$egl" ]] || return 1
+  rhi="$(grep -aoF 'Failed to create QRhi for QBackingStoreRhiSupport' "$APP_LOG" 2>/dev/null | head -1)"
+  [[ -n "$rhi" ]] || return 1
+  toplevel="$(grep -aF 'New xdg_shell toplevel' "$SESS_LOG" 2>/dev/null | tail -1)"
+  [[ -n "$toplevel" ]] || return 1
+  printf 'no DRM device at all, QtWayland reports "%s", QRhi reports "%s", and the compositor saw the client create an xdg_toplevel it could never commit a buffer for' \
+    "$egl" "$rhi"
+}
+
+# dump_mapping_evidence — the quotes behind the skip, for the build log.
+dump_mapping_evidence() {
+  echo "  info evidence client    : $(grep -aoE 'EGL not available|Failed to initialize EGL display[^;]*' "$APP_LOG" 2>/dev/null | head -1)"
+  echo "  info evidence client    : $(grep -aoE 'Failed to create QRhi for QBackingStoreRhiSupport|Failed to create RHI for backend[^;]*' "$APP_LOG" 2>/dev/null | head -1)"
+  echo "  info evidence client    : $(grep -aoE 'Recreating [^;]*to support QSurface::OpenGLSurface' "$APP_LOG" 2>/dev/null | head -1 | cut -c1-130)"
+  echo "  info evidence client    : $(grep -aoE 'Flushing [^;]*using RHI' "$APP_LOG" 2>/dev/null | head -1 | cut -c1-130)"
+  echo "  info evidence compositor: $(grep -aF 'New xdg_shell toplevel' "$SESS_LOG" 2>/dev/null | tail -1 | cut -c1-140)"
+  echo "  info evidence compose   : mapped xdg_shell views in this session: $(swaymsg -t get_tree -r 2>/dev/null | jq '[.. | objects | select(.shell? == "xdg_shell")] | length' 2>/dev/null) (the client never committed a buffer)"
+  echo "  info evidence sandbox   : /dev/dri: $(ls /dev/dri 2>/dev/null | tr '\n' ' ' || echo absent)"
+}
+
 # ---- check (a): state oracle ------------------------------------------------
 
 check_state_oracle() {
@@ -350,43 +425,60 @@ check_state_oracle() {
     [[ -n "$node" && "$node" != "null" ]] && break
     sleep 0.1
   done
+  local mapped=1 reason
   if [[ -z "$node" || "$node" == "null" ]]; then
-    dump_tree app-not-found
-    fail "compositor sees no xdg_shell toplevel for the app"
-    return
+    mapped=0
+    if [[ "$REQUIRE_MAPPING" != "1" ]] && reason="$(mapping_impossible_reason)"; then
+      # Explicit, evidenced skip — see "compositor visibility" above. The
+      # compositor assertions are kept: they run for real the moment a view maps.
+      skip "compositor: mapped toplevel (app_id, rect, focused) — $reason"
+      dump_mapping_evidence
+    else
+      dump_tree app-not-found
+      fail "compositor sees no xdg_shell toplevel for the app"
+      return
+    fi
   fi
 
   local app_id rect focused fsm
-  app_id="$(jq -r '.app_id // ""' <<<"$node")"
-  rect="$(jq -r '.rect | "\(.x),\(.y) \(.width)x\(.height)"' <<<"$node")"
-  focused="$(jq -r '.focused' <<<"$node")"
-  fsm="$(jq -r '.fullscreen_mode' <<<"$node")"
+  if [[ "$mapped" == "1" ]]; then
+    app_id="$(jq -r '.app_id // ""' <<<"$node")"
+    rect="$(jq -r '.rect | "\(.x),\(.y) \(.width)x\(.height)"' <<<"$node")"
+    focused="$(jq -r '.focused' <<<"$node")"
+    fsm="$(jq -r '.fullscreen_mode' <<<"$node")"
 
-  if [[ -n "$app_id" && "$app_id" != "null" ]]; then
-    pass "compositor: app_id=\"$app_id\" (Wayland toplevel identity)"
-  else
-    fail "compositor: toplevel has no app_id"
-  fi
+    if [[ -n "$app_id" && "$app_id" != "null" ]]; then
+      pass "compositor: app_id=\"$app_id\" (Wayland toplevel identity)"
+    else
+      fail "compositor: toplevel has no app_id"
+    fi
 
-  if jq -e '.rect.width > 0 and .rect.height > 0' <<<"$node" >/dev/null; then
-    pass "compositor: real window rect $rect"
-  else
-    fail "compositor: window rect is empty ($rect)"
-  fi
+    if jq -e '.rect.width > 0 and .rect.height > 0' <<<"$node" >/dev/null; then
+      pass "compositor: real window rect $rect"
+    else
+      fail "compositor: window rect is empty ($rect)"
+    fi
 
-  if [[ "$focused" == "true" ]]; then
-    pass "compositor: window is focused (single toplevel)"
-  else
-    fail "compositor: window is not focused"
+    if [[ "$focused" == "true" ]]; then
+      pass "compositor: window is focused (single toplevel)"
+    else
+      fail "compositor: window is not focused"
+    fi
   fi
 
   # Our own report: the demo probes win_info at load, then again after it asks
   # the runtime for fullscreen. The compositor is the second opinion.
   if grep -qF -- "[tauriqt-demo] win_info:" "$APP_LOG"; then
     pass "runtime: win_info report captured"
-    grep -qE 'is_focused=true' "$APP_LOG" \
-      && pass "runtime: reports is_focused=true (matches the compositor)" \
-      || fail "runtime: did not report is_focused=true"
+    if [[ "$mapped" == "1" ]]; then
+      grep -qE 'is_focused=true' "$APP_LOG" \
+        && pass "runtime: reports is_focused=true (matches the compositor)" \
+        || fail "runtime: did not report is_focused=true"
+    else
+      # Focus is the compositor's to grant: with no mapped view there is nothing
+      # to compare against, so the agreement assertion is skipped, not faked.
+      skip "runtime: is_focused matches the compositor (no mapped view to match)"
+    fi
     grep -qE '\[tauriqt-demo\] win_info: .*is_fullscreen=false' "$APP_LOG" \
       && pass "runtime: initial win_info reports is_fullscreen=false" \
       || fail "runtime: initial win_info did not report is_fullscreen=false"
@@ -404,6 +496,11 @@ check_state_oracle() {
   grep -qE 'win_info_after_fullscreen: .*is_fullscreen=true' "$APP_LOG" \
     && pass "runtime: post-fullscreen win_info reports is_fullscreen=true" \
     || fail "runtime: post-fullscreen win_info did not report is_fullscreen=true"
+
+  if [[ "$mapped" != "1" ]]; then
+    skip "compositor: fullscreen enable/disable (needs a mapped view)"
+    return
+  fi
 
   # --- compositor-driven fullscreen (from our side, not the app's request) ---
   swaymsg fullscreen enable >/dev/null 2>&1
@@ -459,6 +556,8 @@ check_title_oracle() {
   done
   if [[ "$seen" == "1" ]]; then
     pass "compositor: toplevel name reflects the new title"
+  elif [[ "$REQUIRE_MAPPING" != "1" ]] && mapping_impossible_reason >/dev/null; then
+    skip "compositor: toplevel name reflects the new title (no mapped toplevel here)"
   else
     info "compositor: title already reverted before sampling (set_title then fullscreen toggles); skipped"
   fi
@@ -471,8 +570,10 @@ check_positions() {
 
   local node rect
   node="$(app_tree)"
-  rect="$(jq -r '.rect | "\(.x),\(.y) \(.width)x\(.height)"' <<<"$node")"
-  echo "  compositor (swaymsg -t get_tree) rect : $rect"
+  rect=""
+  [[ -n "$node" && "$node" != "null" ]] && \
+    rect="$(jq -r '.rect | "\(.x),\(.y) \(.width)x\(.height)"' <<<"$node")"
+  echo "  compositor (swaymsg -t get_tree) rect : ${rect:-<no mapped toplevel>}"
 
   local err
   err="$(grep -oE 'inner_position=ERR\([^)]*\)' "$APP_LOG" | head -1)"
@@ -481,6 +582,8 @@ check_positions() {
 
   if [[ -n "$rect" ]]; then
     pass "compositor reports a real rect"
+  elif [[ "$REQUIRE_MAPPING" != "1" ]] && mapping_impossible_reason >/dev/null; then
+    skip "compositor reports a real rect — it has no mapped toplevel here (see session 1)"
   else
     dump_tree positions-no-rect
     fail "compositor rect unavailable"
@@ -660,7 +763,14 @@ fi
 # ---- summary ----------------------------------------------------------------
 teardown_all
 section "summary"
-echo "  assertions: $PASS_OUT passed, $FAILURES failed over $APP_RUN app run(s)"
+echo "  assertions: $PASS_OUT passed, $FAILURES failed, $SKIPPED skipped over $APP_RUN app run(s)"
+if [[ "$SKIPPED" -gt 0 ]]; then
+  echo "  note: skipped assertions need a compositor-visible (mapped) toplevel, which"
+  echo "        this sandbox cannot produce — the client has no GL/EGL backend to"
+  echo "        flush its window through (see the evidence above and"
+  echo "        docs/wayland-smoke-findings.md). Re-run with --require-mapping on a"
+  echo "        machine with a GL path to turn every skip into a failure."
+fi
 
 # Leak check: nothing we started may survive. PID liveness is the robust test —
 # the `sway` Nix wrapper execs `sway-unwrapped`, so grepping the store path can

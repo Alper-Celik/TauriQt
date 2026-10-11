@@ -22,8 +22,10 @@ therefore two things at once:
    reporting can be checked from the outside instead of trusted.
 
 `scripts/sway-oracle.sh` starts three short sessions and asserts on both sides.
-It prints `PASS`/`FAIL` per assertion, exits non-zero on any failure, and reaps
-every session it started.
+It prints `PASS`/`FAIL`/`SKIP` per assertion, exits non-zero on any failure, and
+reaps every session it started. (The sample below is from a machine with a GL path;
+in the GL-less build sandbox the compositor-visible assertions print `SKIP` with the
+evidence — see `docs/wayland-smoke-findings.md` §5.)
 
 ```
 $ scripts/sway-oracle.sh --no-build
@@ -172,6 +174,14 @@ works in a plain CI container that has Nix but no `/dev/dri` and no systemd.
 
 ## Known gaps and honest limits
 
+- **In a GL-less sandbox the compositor has nothing to be an oracle about.** The
+  flake checks run in a Nix build sandbox, which has no `/dev/dri`; without EGL Qt
+  cannot composite the QtWebEngine widget tree (it flushes the window through QRhi,
+  which fails silently), so the client never commits a buffer and `get_tree` has no
+  mapped toplevel. The assertions are all still here and run for real wherever EGL
+  exists; in that sandbox they are reported as `SKIP` with the quoted evidence and
+  the app-side assertions still run. `--require-mapping` turns every skip into a
+  failure. Evidence and mechanism: `docs/wayland-smoke-findings.md` §5.
 - **No post-load re-probe without a Rust change.** The demo page invokes
   `win_info`/`monitors` once while loading. After the compositor moves or
   fullscreens the window, the runtime is asked nothing further, so the harness

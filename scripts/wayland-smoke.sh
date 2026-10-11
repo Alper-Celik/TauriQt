@@ -265,6 +265,29 @@ if [[ -n "$SCREENSHOT" ]]; then
     printf 'wayland-smoke: baseline capture failed\n' >&2
 fi
 
+# ---------------------------------------------------- environment capability
+
+# mapping_impossible_reason — prints an evidence-backed reason when this
+# environment provably cannot paint a widget window, nothing otherwise.
+#
+# QtWebEngine's QWebEngineView is a QQuickWidget (a render-to-texture child), so
+# Qt composites the top-level window through its QRhi path ("Flushing …
+# using RHI" in the `qt.widgets.painting` log) and recreates the platform window
+# as an OpenGLSurface. That needs a GL/EGL backend: with no DRM device at all (a
+# Nix build sandbox has none) Mesa cannot bring up EGL, Qt's compositor flush
+# fails silently and the client never commits a buffer, so no pixel can reach
+# the output. Fail-closed: every piece must hold, so a genuine "nothing painted"
+# regression in a capable environment still fails the check.
+mapping_impossible_reason() {
+  [[ -n "$(ls -A /dev/dri 2>/dev/null)" ]] && return 1
+  local egl rhi
+  egl="$(grep -aoE 'EGL not available|Failed to initialize EGL display[^;]*' "$LOG" 2>/dev/null | head -1)"
+  [[ -n "$egl" ]] || return 1
+  rhi="$(grep -aoF 'Failed to create QRhi for QBackingStoreRhiSupport' "$LOG" 2>/dev/null | head -1)"
+  [[ -n "$rhi" ]] || return 1
+  printf '"%s" + "%s"' "$egl" "$rhi"
+}
+
 # ---------------------------------------------------------------- the app run
 
 echo "==> running $APP for up to ${TIMEOUT}s"
@@ -283,6 +306,13 @@ app_env=(
   XDG_SESSION_TYPE=wayland
   QT_QPA_PLATFORM=wayland
   QTWEBENGINE_CHROMIUM_FLAGS="$CHROMIUM_FLAGS"
+  # Qt's own flush decision ("… using RHI") is quoted as evidence when this
+  # environment cannot paint (see mapping_impossible_reason above). The app runs
+  # under `setsid` with stdio redirected — no controlling TTY — and Qt then logs
+  # through syslog instead of stderr (qtbase: shouldLogToStderr()), so both
+  # variables are set here rather than left to the environment.
+  QT_FORCE_STDERR_LOGGING="${QT_FORCE_STDERR_LOGGING:-1}"
+  QT_LOGGING_RULES="${WAYLAND_SMOKE_LOGGING_RULES:-qt.widgets.painting=true}"
 )
 [[ "$PROXY_DEBUG" == 1 ]] && app_env+=(TAURIQT_PROXY_DEBUG=1)
 
@@ -348,6 +378,7 @@ APP_GROUP=""
 
 failures=0
 checks=0
+skips=0
 expect() {
   local pattern="$1"
   checks=$((checks + 1))
@@ -443,8 +474,20 @@ if [[ -n "$SCREENSHOT" ]]; then
     echo "  ok   : $(basename "$SCREENSHOT"): $(png_dims "$SCREENSHOT"), $(wc -c <"$SCREENSHOT") bytes"
     if [[ -s "$BASELINE" ]]; then
       if cmp -s "$BASELINE" "$SCREENSHOT"; then
-        echo "  FAIL : capture is byte-identical to the empty-session baseline (nothing painted)"
-        failures=$((failures + 1))
+        if reason="$(mapping_impossible_reason)"; then
+          # An explicit, evidenced skip — not a weakened assertion: the capture
+          # is stateable only because this environment cannot paint at all.
+          skips=$((skips + 1))
+          echo "  SKIP : capture is byte-identical to the empty-session baseline — nothing painted,"
+          echo "         and this environment provably cannot paint: $reason"
+          echo "         QtWebEngine's view is a QQuickWidget, so the top level flushes through"
+          echo "         Qt's QRhi path, which has no backend without EGL (see"
+          echo "         docs/wayland-smoke-findings.md). The paint assertion is kept and runs"
+          echo "         for real wherever /dev/dri and EGL exist."
+        else
+          echo "  FAIL : capture is byte-identical to the empty-session baseline (nothing painted)"
+          failures=$((failures + 1))
+        fi
       else
         echo "  ok   : capture differs from the empty-session baseline (baseline $(basename "$BASELINE"): $(png_dims "$BASELINE"), $(wc -c <"$BASELINE") bytes) — the client painted"
       fi
@@ -469,7 +512,9 @@ if [[ "$failures" -gt 0 ]]; then
   exit 1
 fi
 
-if [[ "$STOPPED_EARLY" == 1 ]]; then
+if [[ "$skips" -gt 0 ]]; then
+  echo "==> ${checks} expectations checked: $((checks - skips)) passed, ${skips} skipped — this environment cannot paint (see the SKIP above)"
+elif [[ "$STOPPED_EARLY" == 1 ]]; then
   echo "==> ${checks} expectations passed (run stopped as soon as it reached its verdict)"
 else
   echo "==> ${checks} expectations passed (the run used its full ${TIMEOUT}s)"

@@ -316,8 +316,15 @@
         # Wayland harness: scripts/wayland-smoke.sh (which drives a headless sway
         # session through scripts/sway-session.sh) runs inside the build; every
         # compositor and tool it needs is a Nix dependency of this check.
+        #
+        # --screenshot makes the check prove the client painted (grim capture vs.
+        # an empty-session baseline). In a build sandbox with no /dev/dri there is
+        # no EGL, so Qt cannot composite the QtWebEngine widget tree and the
+        # capture is empty; the script then states that explicitly with the
+        # evidence instead of silently passing (see the mapping capability check
+        # in scripts/wayland-smoke.sh and docs/wayland-smoke-findings.md).
         wayland-smoke = harnessCheck pkgs "tauriqt-wayland-smoke" ''
-          bash scripts/wayland-smoke.sh
+          bash scripts/wayland-smoke.sh --screenshot "$TMPDIR/wl-shot.png"
         '' { };
 
         # scripts/sway-oracle.sh: the same headless-sway exercise from the other
