@@ -1,0 +1,110 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+#
+# Nix-only CI.
+#
+# Every binary the harness runs — sway/cage/weston (headless compositors), grim
+# (captures), dbus, Xvfb (the X11 guard), node (the CDP/WebDriver probes under
+# tools/), chromedriver (WebDriver), cargo/Qt (the app itself) — comes from this
+# flake's `devShells.<system>.ci` and `checks.<system>.*`. The runner contributes
+# Nix itself and nothing else: no apt-get, no actions/setup-*, no
+# runner-provided language toolchains.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Cheap gate in front of the two build jobs: every flake output must evaluate
+  # for both supported systems, nothing is built. Cross-arch evaluation
+  # (--all-systems) catches e.g. a harness tool that does not exist on arm64
+  # before any heavy job starts.
+  eval:
+    name: flake eval (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Evaluate all flake outputs for both systems (no builds)
+        run: nix flake check --no-build --all-systems
+
+  # X11 guard: the small engine-level smoke (scripts/smoke.sh) on a virtual X
+  # server. Local equivalent: nix build .#checks.<system>.smoke
+  x11-smoke:
+    name: x11 smoke (${{ matrix.system }})
+    needs: eval
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Build the X11 smoke check
+        run: nix build .#checks.${{ matrix.system }}.smoke --no-link -L
+
+  # Wayland harness in a job of its own, so a failure here cannot mask the X11
+  # smoke above. Local equivalents:
+  #   nix build .#checks.<system>.wayland-smoke
+  #   nix build .#checks.<system>.sway-oracle
+  wayland-harness:
+    name: wayland harness (${{ matrix.system }})
+    needs: eval
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Headless-sway smoke (scripts/wayland-smoke.sh)
+        run: nix build .#checks.${{ matrix.system }}.wayland-smoke --no-link -L
+      - name: Headless-sway oracle (scripts/sway-oracle.sh)
+        run: nix build .#checks.${{ matrix.system }}.sway-oracle --no-link -L
