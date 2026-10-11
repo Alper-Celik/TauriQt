@@ -14,14 +14,50 @@
         "x86_64-linux"
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f nixpkgs.legacyPackages.${system});
+
+      # qtwebengine installs into its own prefix; qt-build-utils resolves modules
+      # via `qmake -query`, which only knows qtbase's. Merge module prefixes and
+      # wrap qmake so module lookups see the merged tree.
+      qtMerged =
+        pkgs:
+        pkgs.symlinkJoin {
+          name = "qt-merged";
+          paths =
+            let q = pkgs.kdePackages;
+            in [
+              q.qtbase
+              q.qtwebengine
+              q.qtdeclarative
+              q.qtwebchannel
+              q.qtpositioning
+            ];
+        };
+
+      qmakeMerged =
+        pkgs:
+        pkgs.writeShellScriptBin "qmake" ''
+          real="${pkgs.kdePackages.qtbase}/bin/qmake"
+          base="${pkgs.kdePackages.qtbase}"
+          merged="${qtMerged pkgs}"
+          if [ "''${1:-}" = "-query" ]; then
+            v="$("$real" -query "''${2:-}")"
+            echo "''${v//$base/$merged}"
+          else
+            exec "$real" "$@"
+          fi
+        '';
     in
     {
       packages = forAllSystems (pkgs: rec {
-        tauriqt = pkgs.stdenv.mkDerivation {
+        tauriqt = pkgs.rustPlatform.buildRustPackage {
           pname = "tauriqt";
           version = "0.1.0";
           src = self;
+
+          cargoLock.lockFile = ./Cargo.lock;
+
           nativeBuildInputs = [
+            (qmakeMerged pkgs)
             pkgs.cmake
             pkgs.kdePackages.wrapQtAppsHook
           ];
@@ -29,8 +65,9 @@
             pkgs.kdePackages.qtbase
             pkgs.kdePackages.qtwebengine
           ];
+
           meta = with pkgs.lib; {
-            description = "Sample QtWebEngine browser window";
+            description = "Sample QtWebEngine window driven from Rust via cxx-qt";
             license = licenses.mit;
             mainProgram = "tauriqt";
           };
@@ -48,12 +85,14 @@
       devShells = forAllSystems (pkgs: {
         default = pkgs.mkShell {
           packages = [
+            (qmakeMerged pkgs)
+            pkgs.cargo
+            pkgs.rustc
+            pkgs.rustfmt
+            pkgs.clippy
             pkgs.cmake
-            pkgs.ninja
             pkgs.reuse
-            pkgs.kdePackages.qtbase
-            pkgs.kdePackages.qtwebengine
-            pkgs.kdePackages.wrapQtAppsHook
+            (qtMerged pkgs)
           ];
         };
       });

@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+
+[package]
+name = "tauriqt"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cxx = "1"
+cxx-qt = "0.10"
+
+[build-dependencies]
+cxx-qt-build = "0.10"
