@@ -87,13 +87,24 @@ pnpm cdp targets                                # Readest's own dependency-free 
 | `test:e2e:web` (Playwright) | Playwright against the web build | not the Tauri app at all |
 | CDP (`pnpm cdp`, `chromium.connectOverCDP`) | Chrome DevTools Protocol on 9222 | **yes** — this is the route |
 
-To get Readest's *app-level* e2e onto Qt, the missing piece is a WebDriver endpoint in front
-of the CDP one: run chromedriver against the QtWebEngine CDP port. This repo already did
-that for its demo app (`tools/webdriver-probe/run.sh`; `docs/webdriver-attach-findings.md`
-records 33/39 endpoints passing with a single `/json/version` rewrite, because QtWebEngine
-publishes its product string as `tauri-runtime-qt/`). Point wdio at chromedriver's port and
-`test:e2e`'s specs should run; that needs the wdio port made overridable (it is hardcoded
-to 4445 in `apps/readest-app/wdio.conf.ts`), which belongs in the patch once it is proven.
+**Measured: their wdio e2e cannot be driven on this runtime.** `e2e.sh` implements the
+attempt end to end — `chromedriver -> version-fixup -> mitm (stubs) -> QtWebEngine`, with
+the wdio port and debugger address made overridable in the patch — and each layer works,
+but ChromeDriver's *session creation* is blocked by a Qt gap:
+
+| Stage | Result |
+|---|---|
+| version fix-up | works: `Session info: chrome=155.0.8059.39` (the fake must use chromedriver's **full** version, not the major) |
+| `Target.getBrowserContexts` | never sent by chromedriver 155 — the real blocker (from the traffic log) was `Target.createTarget {hidden:true, url:"about:blank"}` |
+| stubbing `Target.createTarget` to return the app's own page target | session creation passes, but chromedriver **owns** the tab it "created": it navigates that target to `about:blank`, which takes the app page with it |
+| consequence | the app's `beforeunload` fires (`Page.javascriptDialogOpening` on the now-blank target) and session creation hangs until wdio times out |
+
+The root cause is the one already recorded in `docs/cdp-support-matrix.md` and
+`docs/webdriver-attach-findings.md`: **QtWebEngine cannot create a second target**, and
+ChromeDriver insists on a tab of its own. WebDriver-driven suites (`test:tauri`,
+`test:e2e`) therefore have no path here; CDP-driven tooling does, because it attaches to the
+page the app already owns (which is why `check.mjs` and `tools/cdp-probe/` work, and why
+Playwright attach is limited to contexts/pages that already exist).
 
 ## Expectations
 

@@ -325,3 +325,23 @@ and tears the app's process group down), starts `chromedriver --port=4444 --verb
 - `results.json` truncates response bodies at 2000 characters (for example `source`); the
   `chromedriver-verbose.log` next to it holds the untruncated traffic.
 - The fix-up proxy is not load-tested: it forwards one HTTP GET per session plus WebSocket upgrades.
+
+
+## ChromeDriver session creation against QtWebEngine (2026-10-11)
+
+Attaching a *WebDriver-driven* suite (WebdriverIO, port override + `goog:chromeOptions.debuggerAddress`)
+hits a wall the CDP-level probes never did, measured while running Readest's own e2e suite
+against this runtime (`integrations/readest/e2e.sh`):
+
+1. ChromeDriver parses `GET /json/version` and refuses QtWebEngine's browser string
+   (`tauri-runtime-qt/`); the fix-up proxy must answer with **ChromeDriver's own full
+   version** — `Chrome/155.0.0.0` is rejected, `Chrome/155.0.8059.39` is accepted.
+2. ChromeDriver 155 does **not** call `Target.getBrowserContexts` (a stub for it is dead
+   code); its first blocked call is `Target.createTarget {hidden:true, url:"about:blank"}`.
+3. Answering that with the app's own page target lets session creation proceed, but
+   ChromeDriver then *owns* that tab and navigates it to `about:blank` — the app page is
+   gone, its `beforeunload` raises `Page.javascriptDialogOpening`, and session creation
+   hangs until the client times out.
+
+So: CDP attach works (the page the app already owns), **WebDriver does not** — the protocol
+requires a target QtWebEngine cannot create.
