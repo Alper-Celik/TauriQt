@@ -106,6 +106,16 @@ ChromeDriver insists on a tab of its own. WebDriver-driven suites (`test:tauri`,
 page the app already owns (which is why `check.mjs` and `tools/cdp-probe/` work, and why
 Playwright attach is limited to contexts/pages that already exist).
 
+## Measured results (2026-10-11, aarch64/NixOS, Qt 6.11.2)
+
+| What | Result |
+|---|---|
+| Readest boots on the Qt runtime | yes — their page renders (`Readest — Where You Read, Digest and Get Insight`), `window.__TAURI_INTERNALS__` present |
+| `invoke()` on a real third-party app | yes — `get_environment_variable` (their command) returned the home directory through this runtime's header-carried invoke path |
+| Readest's own Rust suite | `cargo test -p Readest --lib --no-default-features --features qt` → **183 passed, 0 failed** |
+| CDP battery on their page | 62 commands → 55 results, 7 errors (the known `Browser.getWindowForTarget/Bounds`, `printToPDF`, browser-context gaps), 0 timeouts; 1175 events recorded |
+| their wdio e2e | blocked by QtWebEngine's missing `Target.createTarget` (see above), not by the app or the port patch |
+
 ## Expectations
 
 - Readest exercises far more of the runtime than our demo: multiple windows, window-state
