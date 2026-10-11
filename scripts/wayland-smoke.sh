@@ -1,0 +1,466 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT
+#
+# Wayland-first end-to-end smoke test: boots a private headless sway session
+# (scripts/sway-session.sh — wlroots headless backend, pixman software renderer),
+# runs the sample app inside it on Qt's Wayland platform plugin, and asserts the
+# same runtime traces scripts/smoke.sh checks, plus the Wayland-specific
+# expectations: no X11 platform fallback, and the `Err`s Wayland makes
+# unavoidable (window placement, on-top/bottom state) are *correct* behaviour.
+#
+# Usage:
+#   scripts/wayland-smoke.sh [--timeout S] [--outputs N] [--scale S]
+#                            [--screenshot PATH] [--proxy-debug] [--strict-demo-ok]
+#                            [--skip-build] [--keep-session]
+#
+# Exit code 0 only if every expectation matched.
+#
+# Environment:
+#   TAURIQT_BIN               app binary to run (implies --skip-build; never calls
+#                             nix and never touches LD_LIBRARY_PATH)
+#   SMOKE_SKIP_BUILD=1        reuse the existing ./target/debug/tauriqt
+#   SMOKE_TIMEOUT / WAYLAND_SMOKE_TIMEOUT   seconds for the app run (default 60)
+#   TAURIQT_SWAY_BOOT_TIMEOUT seconds to wait for the compositor (default 20)
+#   QTWEBENGINE_CHROMIUM_FLAGS  override the Chromium flags (default --no-sandbox,
+#                             which the agent firejail requires; a missing or
+#                             unwritable /dev/shm adds --disable-dev-shm-usage)
+#   SWAY_BIN / GRIM_BIN       absolute store paths for sway / grim (otherwise
+#                             PATH, then TAURIQT_SWAY_PKG / TAURIQT_GRIM_PKG,
+#                             then `nix build nixpkgs#…`)
+#   WAYLAND_SMOKE_HOME        scratch HOME for the app run (default: temp dir)
+#   WAYLAND_SMOKE_KEEP=1      leave the session running on exit (debugging)
+#
+# The app log is kept after the run and its path printed, so a failing CI job has
+# the whole trace available.
+
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+SELF_DIR="$(pwd)/scripts"
+SESSION_TOOL="$SELF_DIR/sway-session.sh"
+
+TIMEOUT="${WAYLAND_SMOKE_TIMEOUT:-${SMOKE_TIMEOUT:-60}}"
+export TAURIQT_SWAY_BOOT_TIMEOUT="${TAURIQT_SWAY_BOOT_TIMEOUT:-20}"
+OUTPUTS=1
+SCALE=1
+SCREENSHOT=""
+PROXY_DEBUG="${TAURIQT_PROXY_DEBUG:+1}"
+PROXY_DEBUG="${PROXY_DEBUG:-0}"
+STRICT_DEMO=0
+SKIP_BUILD="${SMOKE_SKIP_BUILD:-0}"
+KEEP_SESSION="${WAYLAND_SMOKE_KEEP:-0}"
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/wayland-smoke.sh [options]
+
+  --timeout S        seconds to let the app run (default 60, or SMOKE_TIMEOUT /
+                     WAYLAND_SMOKE_TIMEOUT); the run stops early once the demo
+                     page reports its verdict
+  --outputs N        headless outputs in the session (default 1)
+  --scale S          scale factor for those outputs (default 1)
+  --screenshot PATH  also capture the output with grim and compare it with the
+                     empty-session baseline (proves the client painted);
+                     the baseline is written next to PATH as .baseline.png
+  --proxy-debug      run with TAURIQT_PROXY_DEBUG=1 and assert the proxy probe
+                     (native state, display_handle()/window_handle(), probe
+                     events through the sink, clean exit 0)
+  --strict-demo-ok   require the demo page's own DEMO_OK verdict (the shipped
+                     page reports DEMO_PARTIAL under Wayland because it counts
+                     the unavoidable position Err as failures)
+  --skip-build       reuse the existing ./target/debug/tauriqt
+  --keep-session     leave the sway session running after the run
+  -h, --help         this text
+EOF
+}
+
+while (($#)); do
+  case "$1" in
+  --timeout | --outputs | --scale | --screenshot)
+    opt="$1"
+    [[ -n "${2:-}" ]] || {
+      printf 'wayland-smoke: %s needs a value\n' "$opt" >&2
+      exit 2
+    }
+    case "$opt" in
+    --timeout) TIMEOUT="$2" ;;
+    --outputs) OUTPUTS="$2" ;;
+    --scale) SCALE="$2" ;;
+    --screenshot) SCREENSHOT="$2" ;;
+    esac
+    shift 2
+    ;;
+  --timeout=* | --outputs=* | --scale=* | --screenshot=*)
+    opt="${1%%=*}"
+    value="${1#*=}"
+    case "$opt" in
+    --timeout) TIMEOUT="$value" ;;
+    --outputs) OUTPUTS="$value" ;;
+    --scale) SCALE="$value" ;;
+    --screenshot) SCREENSHOT="$value" ;;
+    esac
+    shift
+    ;;
+  --proxy-debug)
+    PROXY_DEBUG=1
+    shift
+    ;;
+  --strict-demo-ok)
+    STRICT_DEMO=1
+    shift
+    ;;
+  --skip-build)
+    SKIP_BUILD=1
+    shift
+    ;;
+  --keep-session)
+    KEEP_SESSION=1
+    shift
+    ;;
+  -h | --help)
+    usage
+    exit 0
+    ;;
+  *)
+    printf 'wayland-smoke: unknown option: %s\n' "$1" >&2
+    usage >&2
+    exit 2
+    ;;
+  esac
+done
+
+[[ "$TIMEOUT" =~ ^[1-9][0-9]*$ ]] || {
+  printf 'wayland-smoke: --timeout must be a positive integer (got %s)\n' "$TIMEOUT" >&2
+  exit 2
+}
+[[ -x "$SESSION_TOOL" ]] || {
+  printf 'wayland-smoke: missing executable %s\n' "$SESSION_TOOL" >&2
+  exit 2
+}
+
+# ------------------------------------------------------------ demo acceptance
+
+# demo_partial_is_wayland_expected <reasons>
+#
+# The demo page turns every `X=ERR(...)` field of a result into a failure entry
+# and joins them with " | ". Under Wayland only the toplevel-geometry fields can
+# legitimately fail (a compositor owns placement), so accept a DEMO_PARTIAL whose
+# entries are nothing but `inner_position`/`outer_position` errors that name the
+# Wayland platform — and reject anything else.
+demo_partial_is_wayland_expected() {
+  local entry rest="$1" entries=0 all_errs pos_errs
+  while [[ -n "$rest" ]]; do
+    if [[ "$rest" == *" | "* ]]; then
+      entry="${rest%% | *}"
+      rest="${rest#* | }"
+    else
+      entry="$rest"
+      rest=""
+    fi
+    entries=$((entries + 1))
+    case "$entry" in
+    win_info\ -\>\ * | win_info_after_fullscreen\ -\>\ *) ;;
+    *) return 1 ;;
+    esac
+    [[ "$entry" == *"'wayland' Qt platform does not report top-level window positions"* ]] || return 1
+    all_errs="$(grep -o '=ERR(' <<<"$entry" | wc -l)"
+    pos_errs="$(grep -o 'position=ERR(' <<<"$entry" | wc -l)"
+    [[ "$all_errs" == "$pos_errs" ]] || return 1
+  done
+  ((entries > 0))
+}
+
+# ------------------------------------------------------------------- workspace
+
+LOG="$(mktemp -t tauriqt-wayland-smoke.XXXXXX.log)"
+RUN_HOME="${WAYLAND_SMOKE_HOME:-$(mktemp -d -t tauriqt-wayland-home.XXXXXX)}"
+mkdir -p "$RUN_HOME/.local/share" "$RUN_HOME/.config" "$RUN_HOME/.cache" "$RUN_HOME/.local/state"
+APP_PID_FILE="$(mktemp -u -t tauriqt-wayland-app.XXXXXX.pid)"
+APP_STATUS_FILE="$(mktemp -u -t tauriqt-wayland-app.XXXXXX.status)"
+
+SESSION_ID=""
+APP_GROUP=""
+
+cleanup() {
+  local rc=$?
+  if [[ -n "$APP_GROUP" ]] && kill -0 "$APP_GROUP" 2>/dev/null; then
+    kill -TERM -- "-$APP_GROUP" 2>/dev/null || true
+  fi
+  if [[ -n "$SESSION_ID" && "$KEEP_SESSION" != 1 ]]; then
+    "$SESSION_TOOL" stop "$SESSION_ID" >&2 || true
+  elif [[ -n "$SESSION_ID" ]]; then
+    printf 'wayland-smoke: keeping session %s (%s)\n' "$SESSION_ID" "$XDG_RUNTIME_DIR" >&2
+  fi
+  rm -f "$APP_PID_FILE" "$APP_STATUS_FILE"
+  if [[ -z "${WAYLAND_SMOKE_HOME:-}" && "$KEEP_SESSION" != 1 ]]; then
+    rm -rf "$RUN_HOME"
+  else
+    printf 'wayland-smoke: keeping scratch HOME %s\n' "$RUN_HOME" >&2
+  fi
+  exit "$rc"
+}
+trap cleanup EXIT
+
+APP="${TAURIQT_BIN:-./target/debug/tauriqt}"
+RUN_CMD=()
+if [[ -n "${TAURIQT_BIN:-}" ]]; then
+  [[ -x "$TAURIQT_BIN" ]] || {
+    printf 'wayland-smoke: TAURIQT_BIN is not executable: %s\n' "$TAURIQT_BIN" >&2
+    exit 2
+  }
+  SKIP_BUILD=1
+  RUN_CMD=(timeout "$TIMEOUT" "$TAURIQT_BIN")
+else
+  # Workstation idiom: the devShell supplies the Qt/QtWebEngine environment.
+  RUN_CMD=(env LD_LIBRARY_PATH='' nix develop -c sh -c 'exec "$@"' _ timeout "$TIMEOUT" "$APP")
+fi
+
+if [[ "$SKIP_BUILD" != 1 ]]; then
+  echo "==> building tauriqt"
+  LD_LIBRARY_PATH='' nix develop -c sh -c 'QMAKE=$(which qmake); cargo build -p tauriqt' >/dev/null
+fi
+[[ -x "$APP" ]] || {
+  printf 'wayland-smoke: no app binary at %s (build it, or set TAURIQT_BIN)\n' "$APP" >&2
+  exit 2
+}
+
+# Chromium flags. --no-sandbox is what the agent firejail needs and is harmless
+# elsewhere; software rendering under pixman needs no further switches (see
+# docs/wayland-smoke-findings.md).
+CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox}"
+if [[ ! -d /dev/shm || ! -w /dev/shm ]]; then
+  CHROMIUM_FLAGS="$CHROMIUM_FLAGS --disable-dev-shm-usage"
+fi
+
+# ------------------------------------------------------------------- session
+
+echo "==> starting headless sway session (outputs=$OUTPUTS scale=$SCALE)"
+eval "$("$SESSION_TOOL" start --outputs "$OUTPUTS" --scale "$SCALE")"
+SESSION_ID="$TAURIQT_SWAY_SESSION"
+echo "    session $SESSION_ID  wayland=$WAYLAND_DISPLAY  runtime=$XDG_RUNTIME_DIR"
+echo "    sway=$("$SESSION_TOOL" store sway)  grim=$("$SESSION_TOOL" store grim 2>/dev/null || echo 'unavailable')"
+
+GRIM=""
+BASELINE=""
+if [[ -n "$SCREENSHOT" ]]; then
+  GRIM="$("$SESSION_TOOL" store grim 2>/dev/null)" || GRIM=""
+  [[ -x "$GRIM" ]] || {
+    printf 'wayland-smoke: grim is unavailable; --screenshot needs it\n' >&2
+    exit 2
+  }
+  BASELINE="${SCREENSHOT%.png}.baseline.png"
+  "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$BASELINE" >&2 ||
+    printf 'wayland-smoke: baseline capture failed\n' >&2
+fi
+
+# ---------------------------------------------------------------- the app run
+
+echo "==> running $APP for up to ${TIMEOUT}s"
+echo "    chromium flags: $CHROMIUM_FLAGS"
+echo "    scratch HOME:   $RUN_HOME"
+echo "    log:            $LOG"
+
+app_env=(
+  -u DISPLAY
+  -u DBUS_SESSION_BUS_ADDRESS
+  HOME="$RUN_HOME"
+  XDG_DATA_HOME="$RUN_HOME/.local/share"
+  XDG_CONFIG_HOME="$RUN_HOME/.config"
+  XDG_CACHE_HOME="$RUN_HOME/.cache"
+  XDG_STATE_HOME="$RUN_HOME/.local/state"
+  XDG_SESSION_TYPE=wayland
+  QT_QPA_PLATFORM=wayland
+  QTWEBENGINE_CHROMIUM_FLAGS="$CHROMIUM_FLAGS"
+)
+[[ "$PROXY_DEBUG" == 1 ]] && app_env+=(TAURIQT_PROXY_DEBUG=1)
+
+# `setsid` gives the app its own session/process group (so the whole client tree
+# can be signalled at once); the child records its own pid, which doubles as the
+# group id, and writes the app's exit status for the proxy-debug assertion.
+env "${app_env[@]}" setsid bash -c '
+  echo $$ >"$1"; shift
+  status_file="$1"; shift
+  "$@"
+  printf "%s" "$?" >"$status_file"
+' _ "$APP_PID_FILE" "$APP_STATUS_FILE" "${RUN_CMD[@]}" >"$LOG" 2>&1 &
+
+MARKER='\[tauriqt-demo\] title=|event 4: (DEMO_OK|DEMO_PARTIAL|NO_INTERNALS)'
+[[ "$PROXY_DEBUG" == 1 ]] && MARKER='proxy-debug: worker requests exit\(0\)'
+
+STOPPED_EARLY=0
+APP_STATUS=""
+# Wait for the app process to appear (it records its own pid right after exec).
+while [[ -z "$APP_GROUP" && $SECONDS -lt $TAURIQT_SWAY_BOOT_TIMEOUT ]]; do
+  [[ -s "$APP_PID_FILE" ]] && APP_GROUP="$(<"$APP_PID_FILE")"
+  [[ -n "$APP_GROUP" ]] || sleep 0.1
+done
+[[ -n "$APP_GROUP" ]] || {
+  printf 'wayland-smoke: the app never started (log: %s)\n' "$LOG" >&2
+  tail -n25 "$LOG" >&2 || true
+  exit 1
+}
+
+while :; do
+  if [[ "$PROXY_DEBUG" == 1 && -s "$APP_STATUS_FILE" ]]; then
+    APP_STATUS="$(<"$APP_STATUS_FILE")"
+    STOPPED_EARLY=1
+    break
+  fi
+  if grep -qE -- "$MARKER" "$LOG"; then
+    STOPPED_EARLY=1
+    break
+  fi
+  kill -0 "$APP_GROUP" 2>/dev/null || break
+  [[ $SECONDS -lt $((TIMEOUT + 2)) ]] || break
+  sleep 0.2
+done
+
+if [[ -n "$SCREENSHOT" ]]; then
+  echo "==> capturing $SCREENSHOT"
+  "$SESSION_TOOL" exec "$SESSION_ID" -- "$GRIM" "$SCREENSHOT" >&2 ||
+    printf 'wayland-smoke: screenshot capture failed\n' >&2
+fi
+
+if kill -0 "$APP_GROUP" 2>/dev/null; then
+  kill -TERM -- "-$APP_GROUP" 2>/dev/null || true
+  for _ in $(seq 1 40); do
+    kill -0 "$APP_GROUP" 2>/dev/null || break
+    sleep 0.05
+  done
+  kill -KILL -- "-$APP_GROUP" 2>/dev/null || true
+fi
+[[ -n "$APP_STATUS" ]] || APP_STATUS="$(cat "$APP_STATUS_FILE" 2>/dev/null || true)"
+APP_GROUP=""
+
+# --------------------------------------------------------------- expectations
+
+failures=0
+checks=0
+expect() {
+  local pattern="$1"
+  checks=$((checks + 1))
+  if grep -qF -- "$pattern" "$LOG"; then
+    echo "  ok   : $pattern"
+  else
+    echo "  FAIL : $pattern"
+    failures=$((failures + 1))
+  fi
+}
+expect_absent() {
+  local pattern="$1"
+  checks=$((checks + 1))
+  if grep -qF -- "$pattern" "$LOG"; then
+    echo "  FAIL : must not appear: $pattern"
+    failures=$((failures + 1))
+  else
+    echo "  ok   : absent: $pattern"
+  fi
+}
+note() { printf '  info : %s\n' "$1"; }
+
+echo "==> expectations"
+expect "[tauri-runtime-qt] run: emitting Ready"
+expect "] window 'main' created"
+expect "] webview 'main' created"
+expect "tauri GET tauri://localhost/ -> 200"
+expect "ipc POST ipc://localhost/greet -> 200"
+# Wayland-native: the runtime must be on the Wayland platform plugin (the demo's
+# own error text names it) and must never fall back to X11.
+expect "the 'wayland' Qt platform does not report top-level window positions"
+expect_absent 'Could not load the Qt platform plugin'
+expect_absent "is not implemented yet"
+
+if [[ "$PROXY_DEBUG" == 1 ]]; then
+  expect "proxy-debug: native state: platform=wayland"
+  expect "proxy-debug: display_handle() = Ok(DisplayHandle(Wayland(WaylandDisplayHandle {"
+  expect "proxy-debug: window_handle(u64::MAX) = Err(Unavailable)"
+  expect "proxy-debug: window_handle(1) = WindowHandle(Wayland(WaylandWindowHandle {"
+  expect "proxy-debug: sink received event #1: proxy-probe-1"
+  expect "proxy-debug: sink received event #2: proxy-probe-2"
+  expect "proxy-debug: sink received event #3: proxy-probe-3"
+  expect "proxy-debug: worker requests exit(0)"
+  checks=$((checks + 1))
+  if [[ "$APP_STATUS" == "0" ]]; then
+    echo "  ok   : the proxy-debug run exited 0"
+  else
+    echo "  FAIL : the proxy-debug run exited '${APP_STATUS:-<none>}' (expected 0)"
+    failures=$((failures + 1))
+  fi
+else
+  checks=$((checks + 1))
+  demo_line="$(grep -F '] title=DEMO_' "$LOG" | tail -n1 || true)"
+  verdict="${demo_line#*] title=}"
+  case "$verdict" in
+  DEMO_OK*)
+    echo "  ok   : demo verdict: DEMO_OK"
+    ;;
+  DEMO_PARTIAL:*)
+    if [[ "$STRICT_DEMO" == 1 ]]; then
+      echo "  FAIL : demo verdict: DEMO_PARTIAL (--strict-demo-ok requires DEMO_OK)"
+      failures=$((failures + 1))
+    elif demo_partial_is_wayland_expected "${verdict#DEMO_PARTIAL: }"; then
+      echo "  ok   : demo verdict: DEMO_PARTIAL, limited to Wayland-unavailable geometry"
+      note "accepted reasons: ${verdict#DEMO_PARTIAL: }"
+    else
+      echo "  FAIL : demo verdict: DEMO_PARTIAL for reasons other than Wayland geometry"
+      echo "         ${verdict#DEMO_PARTIAL: }"
+      failures=$((failures + 1))
+    fi
+    ;;
+  *)
+    echo "  FAIL : demo verdict: no DEMO_OK/DEMO_PARTIAL title in the log"
+    failures=$((failures + 1))
+    ;;
+  esac
+  [[ "$STRICT_DEMO" == 1 ]] && expect_absent "DEMO_PARTIAL"
+  expect "ipc POST ipc://localhost/win_info -> 200"
+  expect "ipc POST ipc://localhost/monitors -> 200"
+fi
+
+# ---------------------------------------------------------- optional capture
+
+if [[ -n "$SCREENSHOT" ]]; then
+  echo "==> screenshots"
+  png_dims() {
+    local hex
+    hex="$(od -An -tx1 -j16 -N8 "$1" | tr -d ' \n')"
+    printf '%sx%s' "$((16#${hex:0:8}))" "$((16#${hex:8:8}))"
+  }
+  checks=$((checks + 1))
+  if [[ -s "$SCREENSHOT" ]]; then
+    echo "  ok   : $(basename "$SCREENSHOT"): $(png_dims "$SCREENSHOT"), $(wc -c <"$SCREENSHOT") bytes"
+    if [[ -s "$BASELINE" ]]; then
+      if cmp -s "$BASELINE" "$SCREENSHOT"; then
+        echo "  FAIL : capture is byte-identical to the empty-session baseline (nothing painted)"
+        failures=$((failures + 1))
+      else
+        echo "  ok   : capture differs from the empty-session baseline (baseline $(basename "$BASELINE"): $(png_dims "$BASELINE"), $(wc -c <"$BASELINE") bytes) — the client painted"
+      fi
+    else
+      echo "  ok   : (no baseline capture to compare against)"
+    fi
+  else
+    echo "  FAIL : no screenshot written to $SCREENSHOT"
+    failures=$((failures + 1))
+  fi
+fi
+
+# -------------------------------------------------------------------- result
+
+echo "==> evidence (Wayland trace)"
+grep -E "proxy-debug: (native state|display_handle|window_handle)|the 'wayland' Qt platform does not report|monitors: available_monitors" "$LOG" |
+  head -n6 | cut -c1-240 | sed 's/^/    /' || true
+
+if [[ "$failures" -gt 0 ]]; then
+  echo "==> ${failures} of ${checks} expectation(s) FAILED; last 30 log lines ($LOG):"
+  tail -n30 "$LOG"
+  exit 1
+fi
+
+if [[ "$STOPPED_EARLY" == 1 ]]; then
+  echo "==> ${checks} expectations passed (run stopped as soon as it reached its verdict)"
+else
+  echo "==> ${checks} expectations passed (the run used its full ${TIMEOUT}s)"
+fi
+echo "    full log: $LOG"

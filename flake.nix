@@ -194,19 +194,33 @@
           cargoLock.lockFile = ./Cargo.lock;
 
           env.QMAKE = "${qmakeMerged pkgs}/bin/qmake";
+          preBuild = ''
+            echo "=== Qt diagnostics (temporary) ==="
+            echo "QMAKE env        : $QMAKE"
+            echo "which qmake      : $(command -v qmake)"
+            echo "qmake -query LIBS: $(qmake -query QT_INSTALL_LIBS)"
+            echo "merge target     : ${qtMerged pkgs}"
+            ls "${qtMerged pkgs}/lib" 2>&1 | grep -i 'WebEngineWidgets' || echo "NO WebEngineWidgets prl in merge target"
+            ls "$(qmake -query QT_INSTALL_LIBS)" 2>&1 | grep -i 'WebEngineWidgets' || echo "NO WebEngineWidgets prl at queried path"
+            echo "=== end diagnostics ==="
+          '';
           nativeBuildInputs = [
             (qmakeMerged pkgs)
             pkgs.cmake
             pkgs.pkg-config
-            pkgs.glib
-            pkgs.gtk3
-            pkgs.webkitgtk_4_1
             pkgs.kdePackages.wrapQtAppsHook
           ];
           buildInputs = [
             pkgs.kdePackages.qtbase
             pkgs.kdePackages.qtwebengine
             pkgs.libGL
+            # tauri-runtime links the GTK/webkit stack unconditionally on Linux;
+            # these must be buildInputs (not nativeBuildInputs) so their .pc files
+            # land on PKG_CONFIG_PATH for the -sys crates (atk, gdk-pixbuf, …).
+            pkgs.glib
+            pkgs.gtk3
+            pkgs.webkitgtk_4_1
+            pkgs.atk
           ];
 
           meta = with pkgs.lib; {
