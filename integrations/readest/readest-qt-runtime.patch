@@ -668,3 +668,31 @@ index 49d6e99..f7f1898 100644
      #[cfg(all(feature = "cef", target_os = "linux"))]
      let builder = {
          // Chromium runs unsandboxed, as it always has here. The runtime's
+diff --git a/apps/readest-app/wdio.conf.ts b/apps/readest-app/wdio.conf.ts
+index 7244774..f45b19b 100644
+--- a/apps/readest-app/wdio.conf.ts
++++ b/apps/readest-app/wdio.conf.ts
+@@ -7,6 +7,12 @@ export const config: Options.Testrunner & { capabilities: unknown } = {
+   capabilities: [
+     {
+       browserName: 'chrome',
++      // `WDIO_DEBUGGER=host:port` attaches to an already-running browser's
++      // DevTools endpoint instead of letting ChromeDriver launch one — that is
++      // how these specs can run against a webview the app started itself.
++      ...(process.env.WDIO_DEBUGGER
++        ? { 'goog:chromeOptions': { debuggerAddress: process.env.WDIO_DEBUGGER } }
++        : {}),
+     } as WebdriverIO.Capabilities,
+   ],
+   logLevel: 'error',
+@@ -15,7 +21,9 @@ export const config: Options.Testrunner & { capabilities: unknown } = {
+   connectionRetryTimeout: 120000,
+   connectionRetryCount: 3,
+   hostname: '127.0.0.1',
+-  port: 4445,
++  // 4445 is `tauri-plugin-webdriver` inside the app; override it when the
++  // driver is an external one (see integrations/readest/e2e.sh in TauriQt).
++  port: Number(process.env.WDIO_PORT ?? 4445),
+   framework: 'mocha',
+   reporters: ['spec'],
+   mochaOpts: {
