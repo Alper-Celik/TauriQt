@@ -326,8 +326,13 @@ dump_tree() {
   jq -r '[.. | objects | select(has("pid"))
           | "type=\(.type // "-") shell=\(.shell // "-") app_id=\(.app_id // "-") pid=\(.pid) name=\((.name // "-") | .[0:28])"] | .[]' \
     "$file" 2>/dev/null | head -12 | sed 's/^/  info node              : /'
-  echo "  info app log (first 5) :"
-  head -5 "$APP_LOG" 2>/dev/null | sed 's/^/  info   /'
+  echo "  info app log (tail 8)  :"
+  tail -8 "$APP_LOG" 2>/dev/null | sed 's/^/  info   /'
+  if kill -0 "$APP_PID" 2>/dev/null; then
+    echo "  info app process       : alive (pid $APP_PID)"
+  else
+    echo "  info app process       : DEAD"
+  fi
 }
 
 # ---- check (a): state oracle ------------------------------------------------
