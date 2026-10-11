@@ -39,9 +39,12 @@ if [[ -z "$CHROMEDRIVER" ]]; then
   CHROMEDRIVER="$(nix build --no-link --print-out-paths nixpkgs#chromedriver)/bin/chromedriver"
 fi
 [[ -x "$CHROMEDRIVER" ]] || { echo "no chromedriver at $CHROMEDRIVER" >&2; exit 1; }
-# The fix-up lies about the browser version on purpose, so it only has to look
-# like the version this ChromeDriver was built for.
-major="$("$CHROMEDRIVER" --version | grep -oE '[0-9]+' | head -1)"
+# The fix-up lies about the browser version on purpose, so it has to look like
+# the version this ChromeDriver was built for — ChromeDriver re-reads
+# /json/version itself and refuses anything it cannot parse as a Chrome build it
+# knows, so use its own full version, not just the major.
+driver_version="$("$CHROMEDRIVER" --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -1)"
+[[ -n "$driver_version" ]] || { echo "cannot read chromedriver version" >&2; exit 1; }
 
 cleanup() {
   [[ -n "${DRIVER_PID:-}" ]] && kill "$DRIVER_PID" 2>/dev/null || true
@@ -49,9 +52,9 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "fix-up proxy : 127.0.0.1:$FIXUP_PORT -> 127.0.0.1:$CDP_PORT (browser=Chrome/$major.0.0.0)"
+echo "fix-up proxy : 127.0.0.1:$FIXUP_PORT -> 127.0.0.1:$CDP_PORT (browser=Chrome/$driver_version)"
 node "$repo/tools/webdriver-probe/version-fixup.mjs" \
-  --port="$FIXUP_PORT" --target="127.0.0.1:$CDP_PORT" --browser-version="Chrome/$major.0.0.0" \
+  --port="$FIXUP_PORT" --target="127.0.0.1:$CDP_PORT" --browser-version="Chrome/$driver_version" \
   >"$checkout/wdio-fixup.log" 2>&1 &
 FIXUP_PID=$!
 
