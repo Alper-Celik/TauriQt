@@ -8,6 +8,14 @@ edition = "2021"
 
 [features]
 devtools = []
+# `tauri-runtime` 2.12 added `WindowDispatch::set_fullscreen_on_monitor` as a
+# *required* method (no default body). This runtime's implementation is a stub
+# that answers "not implemented", so a consumer built against an older
+# `tauri-runtime` (Readest runs a vendored 2.11, see
+# integrations/readest/README.md) turns this off — there the method does not
+# exist, and defining it is E0407.
+tauri-runtime-2-12 = []
+default = ["tauri-runtime-2-12"]
 
 [dependencies]
 cxx = "1"

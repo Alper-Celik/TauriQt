@@ -1,5 +1,5 @@
 diff --git a/Cargo.lock b/Cargo.lock
-index 9fff2ab..34a9645 100644
+index 9fff2ab..b779d73 100644
 --- a/Cargo.lock
 +++ b/Cargo.lock
 @@ -78,6 +78,7 @@ dependencies = [
@@ -37,7 +37,80 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "color_quant"
  version = "1.1.0"
-@@ -1738,6 +1750,68 @@ dependencies = [
+@@ -1633,42 +1645,19 @@ dependencies = [
+  "rand_core 0.10.1",
+ ]
+ 
+-[[package]]
+-name = "cssparser"
+-version = "0.36.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "dae61cf9c0abb83bd659dab65b7e4e38d8236824c85f0f804f173567bda257d2"
+-dependencies = [
+- "cssparser-macros 0.6.1",
+- "dtoa-short",
+- "itoa",
+- "phf",
+- "smallvec",
+-]
+-
+ [[package]]
+ name = "cssparser"
+ version = "0.37.0"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "8c9cdaae01d5ed7882b04d795e7f752f46ff52d2fa3b50a20d28c464510bba98"
+ dependencies = [
+- "cssparser-macros 0.7.0",
++ "cssparser-macros",
+  "dtoa-short",
+  "itoa",
+  "phf",
+  "smallvec",
+ ]
+ 
+-[[package]]
+-name = "cssparser-macros"
+-version = "0.6.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "13b588ba4ac1a99f7f2964d24b3d896ddc6bf847ee3855dbd4366f058cfcd331"
+-dependencies = [
+- "quote",
+- "syn 2.0.119",
+-]
+-
+ [[package]]
+ name = "cssparser-macros"
+ version = "0.7.0"
+@@ -1679,28 +1668,12 @@ dependencies = [
+  "syn 2.0.119",
+ ]
+ 
+-[[package]]
+-name = "ctor"
+-version = "0.8.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "352d39c2f7bef1d6ad73db6f5160efcaed66d94ef8c6c573a8410c00bf909a98"
+-dependencies = [
+- "ctor-proc-macro",
+- "dtor",
+-]
+-
+ [[package]]
+ name = "ctor"
+ version = "1.0.13"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "914a755b7c2d4af2bdcff7ce1739e2db9a1b81a9b07123d8015786ae03c0980d"
+ 
+-[[package]]
+-name = "ctor-proc-macro"
+-version = "0.0.7"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "52560adf09603e58c9a7ee1fe1dcb95a16927b17c127f0ac02d6e768a0e25bc1"
+-
+ [[package]]
+ name = "ctr"
+ version = "0.9.2"
+@@ -1738,6 +1711,68 @@ dependencies = [
   "syn 2.0.119",
  ]
  
@@ -106,7 +179,92 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "darling"
  version = "0.20.11"
-@@ -4418,6 +4492,15 @@ dependencies = [
+@@ -2260,21 +2295,6 @@ dependencies = [
+  "litrs",
+ ]
+ 
+-[[package]]
+-name = "dom_query"
+-version = "0.27.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "521e380c0c8afb8d9a1e83a1822ee03556fc3e3e7dbc1fd30be14e37f9cb3f89"
+-dependencies = [
+- "bit-set",
+- "cssparser 0.36.0",
+- "foldhash 0.2.0",
+- "html5ever 0.38.0",
+- "precomputed-hash",
+- "selectors 0.36.1",
+- "tendril",
+-]
+-
+ [[package]]
+ name = "dom_query"
+ version = "0.28.0"
+@@ -2282,11 +2302,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "fac5fca71e65e94cc718a6e2af65d6e0f9c6027751c2aa562fbb5087fda639bc"
+ dependencies = [
+  "bit-set",
+- "cssparser 0.37.0",
++ "cssparser",
+  "foldhash 0.2.0",
+- "html5ever 0.39.0",
++ "html5ever",
+  "precomputed-hash",
+- "selectors 0.38.0",
++ "selectors",
+  "tendril",
+ ]
+ 
+@@ -2326,21 +2346,6 @@ dependencies = [
+  "dtoa",
+ ]
+ 
+-[[package]]
+-name = "dtor"
+-version = "0.3.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f1057d6c64987086ff8ed0fd3fbf377a6b7d205cc7715868cd401705f715cbe4"
+-dependencies = [
+- "dtor-proc-macro",
+-]
+-
+-[[package]]
+-name = "dtor-proc-macro"
+-version = "0.0.6"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f678cf4a922c215c63e0de95eb1ff08a958a81d47e485cf9da1e27bf6305cfa5"
+-
+ [[package]]
+ name = "dunce"
+ version = "1.0.5"
+@@ -3546,16 +3551,6 @@ dependencies = [
+  "windows-link 0.2.1",
+ ]
+ 
+-[[package]]
+-name = "html5ever"
+-version = "0.38.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1054432bae2f14e0061e33d23402fbaa67a921d319d56adc6bcf887ddad1cbc2"
+-dependencies = [
+- "log",
+- "markup5ever 0.38.0",
+-]
+-
+ [[package]]
+ name = "html5ever"
+ version = "0.39.0"
+@@ -3563,7 +3558,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "46a1761807faccc9a19e86944bbf40610014066306f96edcdedc2fb714bcb7b8"
+ dependencies = [
+  "log",
+- "markup5ever 0.39.0",
++ "markup5ever",
+ ]
+ 
+ [[package]]
+@@ -4418,6 +4413,15 @@ dependencies = [
   "libc",
  ]
  
@@ -122,7 +280,25 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "linkme"
  version = "0.3.37"
-@@ -6197,6 +6280,19 @@ version = "0.1.30"
+@@ -4596,17 +4600,6 @@ dependencies = [
+  "libc",
+ ]
+ 
+-[[package]]
+-name = "markup5ever"
+-version = "0.38.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "8983d30f2915feeaaab2d6babdd6bc7e9ed1a00b66b5e6d74df19aa9c0e91862"
+-dependencies = [
+- "log",
+- "tendril",
+- "web_atoms",
+-]
+-
+ [[package]]
+ name = "markup5ever"
+ version = "0.39.0"
+@@ -6197,6 +6190,19 @@ version = "0.1.30"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "d55d956fa96f5ec02be2e13af0e20391a5aa83d6a074e3ad368959d0fab299ea"
  
@@ -142,7 +318,7 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "quick-error"
  version = "2.0.1"
-@@ -6959,6 +7055,12 @@ version = "1.2.0"
+@@ -6959,6 +6965,12 @@ version = "1.2.0"
  source = "registry+https://github.com/rust-lang/crates.io-index"
  checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
  
@@ -155,45 +331,123 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "security-framework"
  version = "3.7.0"
-@@ -8174,7 +8276,7 @@ dependencies = [
-  "swift-rs",
-  "tauri-build 2.6.3",
-  "tauri-macros",
-- "tauri-runtime",
-+ "tauri-runtime 2.11.3",
-  "tauri-runtime-wry",
-  "tauri-utils 2.9.3",
-  "thiserror 2.0.20",
-@@ -8826,10 +8928,65 @@ dependencies = [
-  "windows 0.61.3",
+@@ -6982,25 +6994,6 @@ dependencies = [
+  "libc",
  ]
  
-+[[package]]
-+name = "tauri-runtime"
-+version = "2.11.3"
-+source = "registry+https://github.com/rust-lang/crates.io-index"
-+checksum = "b0b4bc95aed361b0019067d189a1174a603d460d0f6c72606512d59fc9c12ec8"
-+dependencies = [
-+ "cookie",
-+ "dpi",
-+ "gtk",
-+ "http",
-+ "jni 0.21.1",
-+ "objc2",
-+ "objc2-ui-kit",
-+ "objc2-web-kit",
-+ "raw-window-handle",
-+ "serde",
-+ "serde_json",
-+ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
-+ "thiserror 2.0.20",
-+ "url",
-+ "webkit2gtk",
-+ "webview2-com",
-+ "windows 0.61.3",
-+]
-+
+-[[package]]
+-name = "selectors"
+-version = "0.36.1"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "c5d9c0c92a92d33f08817311cf3f2c29a3538a8240e94a6a3c622ce652d7e00c"
+-dependencies = [
+- "bitflags 2.13.1",
+- "cssparser 0.36.0",
+- "derive_more",
+- "log",
+- "new_debug_unreachable",
+- "phf",
+- "phf_codegen",
+- "precomputed-hash",
+- "rustc-hash 2.1.3",
+- "servo_arc",
+- "smallvec",
+-]
+-
  [[package]]
+ name = "selectors"
+ version = "0.38.0"
+@@ -7008,7 +7001,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "8adfa1c298912827b8a28b223b3b874357397ae706e6190acd9bf28cee99114d"
+ dependencies = [
+  "bitflags 2.13.1",
+- "cssparser 0.37.0",
++ "cssparser",
+  "derive_more",
+  "log",
+  "new_debug_unreachable",
+@@ -8176,7 +8169,7 @@ dependencies = [
+  "tauri-macros",
+  "tauri-runtime",
+  "tauri-runtime-wry",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
+  "thiserror 2.0.20",
+  "tokio",
+  "tray-icon",
+@@ -8201,7 +8194,7 @@ dependencies = [
+  "semver",
+  "serde",
+  "serde_json",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
+  "tauri-winres",
+  "walkdir",
+ ]
+@@ -8222,7 +8215,7 @@ dependencies = [
+  "semver",
+  "serde",
+  "serde_json",
+- "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils",
+  "tauri-winres",
+  "walkdir",
+ ]
+@@ -8244,7 +8237,7 @@ dependencies = [
+  "serde_json",
+  "sha2 0.10.9",
+  "syn 2.0.119",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
+  "thiserror 2.0.20",
+  "time",
+  "url",
+@@ -8261,7 +8254,7 @@ dependencies = [
+  "quote",
+  "syn 2.0.119",
+  "tauri-codegen",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
+ ]
+ 
+ [[package]]
+@@ -8276,7 +8269,7 @@ dependencies = [
+  "schemars 0.8.22",
+  "serde",
+  "serde_json",
+- "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils",
+  "walkdir",
+ ]
+ 
+@@ -8338,7 +8331,7 @@ dependencies = [
+  "serde_json",
+  "tauri",
+  "tauri-plugin",
+- "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils",
+  "thiserror 2.0.20",
+  "tracing",
+  "url",
+@@ -8403,7 +8396,7 @@ dependencies = [
+  "serde_repr",
+  "tauri",
+  "tauri-plugin",
+- "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils",
+  "thiserror 2.0.20",
+  "toml 1.1.5+spec-1.1.0",
+  "url",
+@@ -8818,7 +8811,7 @@ dependencies = [
+  "raw-window-handle",
+  "serde",
+  "serde_json",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
+  "thiserror 2.0.20",
+  "url",
+  "webkit2gtk",
+@@ -8830,6 +8823,36 @@ dependencies = [
  name = "tauri-runtime-cef"
  version = "0.1.0"
  
@@ -209,9 +463,9 @@ index 9fff2ab..34a9645 100644
 + "parking_lot",
 + "qt-build-utils",
 + "raw-window-handle",
-+ "tauri-runtime 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-runtime",
 + "tauri-runtime-qt-core",
-+ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-utils",
 + "url",
 +]
 +
@@ -222,24 +476,79 @@ index 9fff2ab..34a9645 100644
 + "base64 0.22.1",
 + "cookie",
 + "http",
-+ "tauri-runtime 2.11.3 (registry+https://github.com/rust-lang/crates.io-index)",
-+ "tauri-utils 2.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
++ "tauri-runtime",
++ "tauri-utils",
 + "url",
 +]
 +
  [[package]]
  name = "tauri-runtime-wry"
  version = "2.11.4"
-@@ -8845,7 +9002,7 @@ dependencies = [
-  "raw-window-handle",
+@@ -8846,7 +8869,7 @@ dependencies = [
   "softbuffer",
   "tao",
-- "tauri-runtime",
-+ "tauri-runtime 2.11.3",
-  "tauri-utils 2.9.3",
+  "tauri-runtime",
+- "tauri-utils 2.9.3",
++ "tauri-utils",
   "url",
   "webkit2gtk",
-@@ -8960,6 +9117,15 @@ dependencies = [
+  "webview2-com",
+@@ -8861,8 +8884,8 @@ dependencies = [
+  "anyhow",
+  "brotli",
+  "cargo_metadata",
+- "ctor 1.0.13",
+- "dom_query 0.28.0",
++ "ctor",
++ "dom_query",
+  "dunce",
+  "glob",
+  "http",
+@@ -8890,43 +8913,6 @@ dependencies = [
+  "walkdir",
+ ]
+ 
+-[[package]]
+-name = "tauri-utils"
+-version = "2.9.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "3e176a18e67764923c4f1ce66f25ae4abe5f688384d5eb1a0fa6c77f3d90f887"
+-dependencies = [
+- "anyhow",
+- "cargo_metadata",
+- "ctor 0.8.0",
+- "dom_query 0.27.0",
+- "dunce",
+- "glob",
+- "http",
+- "infer 0.19.0",
+- "json-patch 3.0.1",
+- "log",
+- "memchr",
+- "phf",
+- "plist",
+- "proc-macro2",
+- "quote",
+- "regex",
+- "schemars 0.8.22",
+- "semver",
+- "serde",
+- "serde-untagged",
+- "serde_json",
+- "serde_with",
+- "swift-rs",
+- "thiserror 2.0.20",
+- "toml 1.1.5+spec-1.1.0",
+- "url",
+- "urlpattern 0.3.0",
+- "uuid 1.26.0",
+- "walkdir",
+-]
+-
+ [[package]]
+ name = "tauri-winres"
+ version = "0.3.6"
+@@ -8960,6 +8946,15 @@ dependencies = [
   "new_debug_unreachable",
  ]
  
@@ -255,7 +564,7 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "thiserror"
  version = "1.0.69"
-@@ -10361,6 +10527,15 @@ dependencies = [
+@@ -10361,6 +10356,15 @@ dependencies = [
   "rustix 0.38.44",
  ]
  
@@ -271,6 +580,15 @@ index 9fff2ab..34a9645 100644
  [[package]]
  name = "winapi"
  version = "0.3.9"
+@@ -11191,7 +11195,7 @@ dependencies = [
+  "cookie",
+  "crossbeam-channel",
+  "dirs",
+- "dom_query 0.28.0",
++ "dom_query",
+  "dpi",
+  "dunce",
+  "gdkx11",
 diff --git a/Cargo.toml b/Cargo.toml
 index c35ac60..fbd7e7d 100644
 --- a/Cargo.toml
@@ -290,7 +608,7 @@ index c35ac60..fbd7e7d 100644
  # override; the vendored copy cross-compiles via `--triple`/`--sdk` instead.
  # Upstream 1.0.8 (2026-08) only takes that path on Xcode 27, so the vendored
 diff --git a/apps/readest-app/src-tauri/Cargo.toml b/apps/readest-app/src-tauri/Cargo.toml
-index 01047c6..610b2e0 100644
+index 01047c6..fcd8bef 100644
 --- a/apps/readest-app/src-tauri/Cargo.toml
 +++ b/apps/readest-app/src-tauri/Cargo.toml
 @@ -27,6 +27,9 @@ wry = ["tauri/wry", "tauri/x11", "tauri/dbus"]
@@ -303,13 +621,16 @@ index 01047c6..610b2e0 100644
  # Internal feature to suppress warnings from old objc crate
  cargo-clippy = []
  # Enable WebDriver plugin for E2E testing (use with `tauri build --debug --features webdriver`)
-@@ -211,6 +214,9 @@ objc2-foundation = { version = "0.3", features = ["NSError", "NSArray"] }
+@@ -211,6 +214,12 @@ objc2-foundation = { version = "0.3", features = ["NSError", "NSArray"] }
  tauri-plugin-dialog = { version = "2", default-features = false, features = ["xdg-portal"] }
  # The CEF runtime, enabled by the `cef` feature above.
  tauri-runtime-cef = { version = "0.1", optional = true }
 +# The Qt runtime, enabled by the `qt` feature above. The path is filled in by
 +# integrations/readest/apply.sh in the TauriQt repo (the crate is not published).
-+tauri-runtime-qt = { path = "/home/alper/Projects/TauriQt/tauri-runtime-qt", optional = true }
++# `default-features = false` drops its `tauri-runtime-2-12` feature: this app
++# builds against a vendored tauri-runtime 2.11, which has no
++# `WindowDispatch::set_fullscreen_on_monitor` for that feature to satisfy.
++tauri-runtime-qt = { path = "@TAURIQT_RUNTIME@", optional = true, default-features = false }
  # Hands a relaunch to the running instance before CEF starts, see
  # src/linux_single_instance.rs.
  zbus = { version = "5", optional = true }

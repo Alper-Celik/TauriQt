@@ -1077,6 +1077,9 @@ impl<T: UserEvent> rt::WindowDispatch<T> for QtWindowDispatcher {
         ops::window::set_fullscreen(self.native, fullscreen)
     }
 
+    /// Only exists on `tauri-runtime` >= 2.12 (see the `tauri-runtime-2-12`
+    /// feature); older versions have no such slot in the trait.
+    #[cfg(feature = "tauri-runtime-2-12")]
     fn set_fullscreen_on_monitor(&self, _position: rt::dpi::PhysicalPosition<f64>) -> Result<()> {
         Err(ops::unimplemented("WindowDispatch::set_fullscreen_on_monitor"))
     }
