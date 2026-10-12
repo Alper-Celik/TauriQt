@@ -156,7 +156,7 @@ via the flake (`devShells.<system>.ci`) or `nix shell`.
 | Tier | What | When |
 |---|---|---|
 | A | **Headless sway sessions** (`WLR_BACKENDS=headless WLR_RENDERER=pixman`), one private `XDG_RUNTIME_DIR` + `SWAYSOCK` per session → a dozen in parallel on one runner. `xwayland disable` guarantees Wayland-native coverage. | per-PR |
-| B | **VM + KVM** `nixosTest` (hermetic: pinned NixOS, kernel/net isolation). KVM is available on GitHub amd64 runners via the Determinate Nix installer (GitHub's own docs still call nested virt unsupported); TCG fallback keeps it runnable. The test driver also gained a **systemd-nspawn container backend** for non-GUI tiers (its docs note: no GUI/setuid in the sandbox). | nightly / release |
+| B | **VM + KVM** `nixosTest` (hermetic: pinned NixOS, kernel/net isolation). KVM is available on GitHub amd64 runners because the Nix installer action chmods `/dev/kvm` and adds `kvm` to `system-features` (GitHub's own docs still call nested virt unsupported); TCG fallback keeps it runnable. The test driver also gained a **systemd-nspawn container backend** for non-GUI tiers (its docs note: no GUI/setuid in the sandbox). | nightly / release |
 | C | One tiny xcb (Xvfb) job | per-PR |
 
 ### Frozen session interface

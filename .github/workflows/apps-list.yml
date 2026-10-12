@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `apps-list` — the third-party applications this runtime is tested against.
+# The list lives in integrations/apps.json (see integrations/README.md); this
+# job only turns it into a matrix, so adding an app is a directory plus an entry
+# there. Called by ci.yml; its output drives apps.yml.
+name: apps-list
+
+on:
+  workflow_call:
+    outputs:
+      matrix:
+        description: GitHub Actions matrix (JSON) of {app, system, entry, timeout}
+        value: ${{ jobs.list.outputs.matrix }}
+
+jobs:
+  list:
+    name: list app integrations
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - id: matrix
+        run: |
+          # shellcheck disable=SC2016  # the $… are jq's, not the shell's
+          matrix="$(nix shell nixpkgs#jq -c jq -c \
+            '{include: [.apps[] as $a | $a.systems[] | {app: $a.name, system: ., entry: $a.entry, timeout: ($a["timeout-minutes"] // 120)}]}' \
+            integrations/apps.json)"
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          echo "apps: $matrix"

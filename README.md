@@ -24,7 +24,7 @@ wry — an app picks it at the type level.
 | `dist/` | Demo frontend (probes every command and reports a verdict) |
 | `scripts/`, `tools/` | Harnesses (smoke, headless Wayland, compositor oracle, CDP, WebDriver) and coverage (`scripts/coverage.sh`) |
 | `integrations/` | Other people's apps run against this runtime, their tests as the judge |
-| `.github/workflows/ci.yml` | CI: eval → lint → checks → coverage, plus a gated tier for those apps |
+| `.github/workflows/` | CI, one file per job (`ci.yml` orchestrates `eval`, `lint`, `checks`, `coverage`, `apps-list`, `apps`, `collect`) plus a gated tier for those apps |
 | `flake.nix`, `justfile` | Dev environment (merged Qt prefix + qmake shim) and recipes |
 
 Status by milestone lives in [PLAN.md](PLAN.md); the per-method Qt mapping in

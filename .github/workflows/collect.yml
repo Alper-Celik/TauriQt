@@ -1,0 +1,107 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `collect` — runs no matter what happened above, gathers every cell's status +
+# log tail, writes one table into the run summary, keeps the logs as a single
+# artifact, and only then decides the run's outcome. That is what makes a single
+# required status meaningful.
+#
+# ci.yml passes `needs.*.result` down as inputs: `needs` belongs to the caller,
+# not to a called workflow.
+name: collect
+
+on:
+  workflow_call:
+    inputs:
+      eval_result:
+        required: true
+        type: string
+      lint_result:
+        required: true
+        type: string
+      checks_result:
+        required: true
+        type: string
+      coverage_result:
+        required: true
+        type: string
+      apps_result:
+        required: true
+        type: string
+
+jobs:
+  collect:
+    name: collect results
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: results-*
+          path: results
+          merge-multiple: true
+      - name: Write summary
+        shell: bash
+        run: |
+          summary="$GITHUB_STEP_SUMMARY"
+          coverage_result="${{ inputs.coverage_result }}"
+          case "$coverage_result" in
+            success)   coverage_icon="✅" ;;
+            cancelled) coverage_icon="⚪" ;;
+            *)         coverage_icon="❌" ;;
+          esac
+          {
+            echo "## TauriQt CI results"
+            echo
+            echo "| system | check | result |"
+            echo "|---|---|---|"
+            while IFS= read -r f; do
+              IFS='|' read -r sys chk res < "$f"
+              case "$res" in
+                success)   icon="✅" ;;
+                cancelled) icon="⚪" ;;
+                *)         icon="❌" ;;
+              esac
+              echo "| $sys | $chk | $icon $res |"
+            done < <(find results -maxdepth 1 -name '*.txt' | sort)
+            echo "| x86_64-linux | coverage | $coverage_icon $coverage_result |"
+            echo
+            echo "gates — eval: \`${{ inputs.eval_result }}\` · lint: \`${{ inputs.lint_result }}\` · checks: \`${{ inputs.checks_result }}\` · coverage: \`$coverage_result\` · apps: \`${{ inputs.apps_result }}\`"
+            echo
+            echo "The coverage job writes its own table (and its artifacts) into the run summary above its job log; \`coverage/summary.md\` is in the \`coverage-lcov\` artifact."
+          } >> "$summary"
+
+          # Failed cells get their log tail inlined, so a red run is readable
+          # without downloading anything.
+          while IFS= read -r f; do
+            IFS='|' read -r sys chk res < "$f"
+            log="results/${sys}-${chk}.log"
+            if [ "$res" != "success" ] && [ -f "$log" ]; then
+              {
+                echo
+                echo "<details><summary>❌ ${sys}/${chk} — last lines</summary>"
+                echo
+                echo '```'
+                tail -40 "$log"
+                echo '```'
+                echo "</details>"
+              } >> "$summary"
+            fi
+          done < <(find results -maxdepth 1 -name '*.txt' | sort)
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: ci-logs
+          path: results/
+          retention-days: 14
+      - name: Decide outcome
+        shell: bash
+        run: |
+          echo "eval=${{ inputs.eval_result }} lint=${{ inputs.lint_result }} checks=${{ inputs.checks_result }} coverage=${{ inputs.coverage_result }}"
+          for r in "${{ inputs.eval_result }}" "${{ inputs.lint_result }}" "${{ inputs.checks_result }}" "${{ inputs.coverage_result }}"; do
+            [ "$r" = "success" ] || { echo "::error::CI failed (see the summary table above)"; exit 1; }
+          done
+          # The app tier is gated to schedule/dispatch, so a skip is expected.
+          case "${{ inputs.apps_result }}" in
+            success | skipped) ;;
+            *) echo "::error::CI failed (app integration, see the summary table above)"; exit 1 ;;
+          esac

@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `lint` — hygiene only, so any architecture will do. Called by ci.yml.
+name: lint
+
+on:
+  workflow_call:
+
+jobs:
+  lint:
+    name: lint (reuse)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-x86_64-linux-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-x86_64-linux-
+          gc-max-store-size-linux: 8G
+      - name: REUSE compliance
+        run: nix develop .#ci -c just lint-reuse

@@ -1,0 +1,37 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `eval` — the cheap gate in front of the heavy jobs: every flake output must
+# evaluate for both supported systems, nothing is built. Cross-arch evaluation
+# (--all-systems) catches e.g. a harness tool that does not exist on arm64
+# before any build starts. Called by ci.yml.
+name: eval
+
+on:
+  workflow_call:
+
+jobs:
+  eval:
+    name: flake eval (${{ matrix.system }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    steps:
+      - uses: actions/checkout@v7
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Evaluate all flake outputs for both systems (no builds)
+        run: nix flake check --no-build --all-systems

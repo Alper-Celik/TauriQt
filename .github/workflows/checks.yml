@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `checks` — the matrix: every flake check on every supported system. Each cell
+# is a hermetic `nix build` of one check derivation, so results are cached by
+# input and the cells are independent of each other.
+# Local equivalents: `just check <name>`, `just check-all`, `just test`.
+# Called by ci.yml (gated on `eval`).
+name: checks
+
+on:
+  workflow_call:
+
+jobs:
+  checks:
+    name: ${{ matrix.check }} (${{ matrix.sys.system }})
+    runs-on: ${{ matrix.sys.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        check:
+          - smoke            # engine smoke on Xvfb (x11 guard)
+          - wayland-smoke    # headless sway: boot + invoke + capture
+          - sway-oracle      # compositor-as-oracle: state/geometry/multi-output
+        sys:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    steps:
+      - uses: actions/checkout@v7
+      # The Lix installer also sets up /dev/kvm (chmod + system-features), which
+      # a VM/nixosTest tier would need.
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.sys.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.sys.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Run check
+        shell: bash
+        run: |
+          set -o pipefail
+          nix build ".#checks.${{ matrix.sys.system }}.${{ matrix.check }}" --no-link -L \
+            2>&1 | tee "check-${{ matrix.sys.system }}-${{ matrix.check }}.log"
+      - name: Record result and log tail
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p results
+          base="results/${{ matrix.sys.system }}-${{ matrix.check }}"
+          printf '%s|%s|%s\n' "${{ matrix.sys.system }}" "${{ matrix.check }}" "${{ job.status }}" > "$base.txt"
+          if [ -f "check-${{ matrix.sys.system }}-${{ matrix.check }}.log" ]; then
+            tail -c 60000 "check-${{ matrix.sys.system }}-${{ matrix.check }}.log" > "$base.log"
+          fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: results-${{ matrix.sys.system }}-${{ matrix.check }}
+          path: results/
+          retention-days: 14

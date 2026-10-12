@@ -1,0 +1,65 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `apps` — one cell per third-party app: build it against this runtime and run
+# its own assertions. Heavy by nature (a 1000-crate Rust build plus a frontend
+# install), which is why ci.yml gates it to the nightly/dispatch triggers. Each
+# app owns its entry script; CI only provides the checkout location (outside the
+# repo on purpose: a checkout nested in this cargo workspace makes cargo resolve
+# the app's vendored crates against our workspace root).
+#
+# The matrix comes from apps-list.yml through ci.yml, because a job that calls a
+# reusable workflow cannot declare `strategy` itself.
+name: apps
+
+on:
+  workflow_call:
+    inputs:
+      matrix:
+        description: GitHub Actions matrix (JSON) produced by apps-list.yml
+        required: true
+        type: string
+
+jobs:
+  apps:
+    name: ${{ matrix.app }} (${{ matrix.system }})
+    runs-on: ${{ matrix.system == 'aarch64-linux' && 'ubuntu-24.04-arm' || 'ubuntu-24.04' }}
+    timeout-minutes: ${{ matrix.timeout }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-${{ matrix.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.system }}-
+          gc-max-store-size-linux: 8G
+      - name: Run the app's integration
+        shell: bash
+        # `runner` is only available inside a step, not in a job-level env.
+        env:
+          INTEGRATION_CHECKOUT: ${{ runner.temp }}/${{ matrix.app }}-checkout
+        run: |
+          set -o pipefail
+          nix develop .#ci -c "${{ matrix.entry }}" \
+            2>&1 | tee "app-${{ matrix.app }}-${{ matrix.system }}.log"
+      - name: Record result and log tail
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p results
+          base="results/${{ matrix.system }}-${{ matrix.app }}"
+          printf '%s|%s|%s\n' "${{ matrix.system }}" "${{ matrix.app }}" "${{ job.status }}" > "$base.txt"
+          if [ -f "app-${{ matrix.app }}-${{ matrix.system }}.log" ]; then
+            tail -c 60000 "app-${{ matrix.app }}-${{ matrix.system }}.log" > "$base.log"
+          fi
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: results-${{ matrix.system }}-${{ matrix.app }}
+          path: results/
+          retention-days: 14

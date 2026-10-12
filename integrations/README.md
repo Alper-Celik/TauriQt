@@ -26,9 +26,10 @@ integrations/<app>/
 
 ## How CI runs them
 
-`.github/workflows/ci.yml` job `apps-list` reads `integrations/apps.json` and feeds a matrix
-to job `apps`, which runs each entry's `ci.sh` inside this repo's dev shell
-(`nix develop -c …`) and folds the result into the same summary table as the flake checks.
+`.github/workflows/apps-list.yml` reads `integrations/apps.json` and feeds a matrix
+to `.github/workflows/apps.yml`, which runs each entry's `ci.sh` inside this repo's dev shell
+(`nix develop -c …`) and folds the result into the same summary table as the flake checks;
+`ci.yml` wires the two together and gates the tier.
 
 The heavy apps do **not** run on every push: the `apps` job is gated to `schedule`
 (nightly) and `workflow_dispatch`. A full Readest run is a 1000-crate Rust build plus a
