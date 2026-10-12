@@ -234,14 +234,18 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: |
             pages deploy --project-name tauriqt-coverage --branch main coverage/report
-      # The preview URL is the SHA alias Cloudflare derives from the branch we
-      # deployed the report under (aliases are 28 characters of it).
+      # Two URLs. The per-commit one is the SHA alias Cloudflare derives from the
+      # branch the report was deployed under (aliases are 28 characters of it).
+      # The custom domain is Pages' *production* hostname, so it serves the
+      # latest `main` build rather than this run.
       - name: Link the published report in the run summary
         if: ${{ steps.pages-preview.conclusion == 'success' }}
         shell: bash
         run: |
-          echo "#### Coverage report: https://${GITHUB_SHA:0:28}.tauriqt-coverage.pages.dev/" \
-            >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "#### Coverage report (this commit): https://${GITHUB_SHA:0:28}.tauriqt-coverage.pages.dev/"
+            echo "Latest on \`main\`: https://tauriqt-coverage.alper-celik.dev/"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   # Third-party applications this runtime is tested against. The list lives in
   # integrations/apps.json (see integrations/README.md); this job only turns it
