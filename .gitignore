@@ -4,6 +4,7 @@
 result
 /build/
 .cache/
+.wrangler
 compile_commands.json
 /target
 coverage/
