@@ -3,6 +3,10 @@
 
 # TauriQt
 
+[![CI](https://github.com/Alper-Celik/TauriQt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Alper-Celik/TauriQt/actions/workflows/ci.yml)
+[![line coverage](https://tauriqt-coverage.alper-celik.dev/badge_linecoverage.svg)](https://tauriqt-coverage.alper-celik.dev/)
+[![branch coverage](https://tauriqt-coverage.alper-celik.dev/badge_branchcoverage.svg)](https://tauriqt-coverage.alper-celik.dev/)
+
 A **Qt-based runtime for Tauri 2 on Linux**: Qt windowing replaces tao, QtWebEngine
 replaces WebKitGTK (webkit2gtk). It is a custom `tauri_runtime::Runtime`, not a patch to
 wry — an app picks it at the type level.
