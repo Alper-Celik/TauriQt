@@ -204,11 +204,15 @@ jobs:
           name: coverage-report
           path: coverage/report/
           retention-days: 14
-      # Optional publish, exactly the ProjectRead.ing shape: `wrangler pages
-      # deploy` of the ReportGenerator output. It stays off until the repository
-      # has a CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID) secret, and it
-      # never blocks the run — the artifacts above always carry the reports.
+      # Cloudflare Pages publish, the ProjectRead.ing shape: `wrangler pages
+      # deploy` of the ReportGenerator output, once per commit with the SHA as
+      # the branch (every run keeps its own preview URL) and once onto `main`
+      # for a main build. Both stay off until the repository has a
+      # CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID secret — a fork PR has
+      # neither — and neither blocks the run: the artifacts above always carry
+      # the reports.
       - name: Publish the HTML report to Cloudflare Pages
+        id: pages-preview
         # `secrets` is not a valid context in a step-level `if`, so the token is
         # hoisted into the step's env and the condition reads that instead.
         if: ${{ success() && env.CLOUDFLARE_API_TOKEN != '' && hashFiles('coverage/report/index.html') != '' }}
@@ -218,7 +222,26 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy coverage/report --project-name=tauriqt-coverage
+          command: |
+            pages deploy --project-name tauriqt-coverage --branch ${{ github.sha }} coverage/report
+      - name: Publish the HTML report to Cloudflare Pages (main)
+        if: ${{ success() && github.ref_name == 'main' && env.CLOUDFLARE_API_TOKEN != '' && hashFiles('coverage/report/index.html') != '' }}
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: |
+            pages deploy --project-name tauriqt-coverage --branch main coverage/report
+      # The preview URL is the SHA alias Cloudflare derives from the branch we
+      # deployed the report under (aliases are 28 characters of it).
+      - name: Link the published report in the run summary
+        if: ${{ steps.pages-preview.conclusion == 'success' }}
+        shell: bash
+        run: |
+          echo "#### Coverage report: https://${GITHUB_SHA:0:28}.tauriqt-coverage.pages.dev/" \
+            >> "$GITHUB_STEP_SUMMARY"
 
   # Third-party applications this runtime is tested against. The list lives in
   # integrations/apps.json (see integrations/README.md); this job only turns it
