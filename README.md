@@ -136,7 +136,9 @@ QtWebEngine a GL path (no `/dev/dri`, so no QRhi, so no committed `wl_buffer`) n
 and `ORACLE_REQUIRE_MAPPING=1` forbids skipping (see
 [docs/wayland-smoke-findings.md](docs/wayland-smoke-findings.md)); and `cargo clippy -D
 warnings` still carries pre-existing findings, so that half of `lint` is not currently green.
-The same harnesses run in CI for both systems.
+The same harnesses run in CI for both systems. CI publishes the merged coverage report
+to Cloudflare Pages: <https://tauriqt-coverage.alper-celik.dev/> is the latest `main`
+build, and each run also links its own per-commit preview URL in the run summary.
 
 The demo page turns the result into a `DEMO_OK` / `DEMO_PARTIAL` window title, which the
 harnesses read — so the app grades itself, on the platform it is running on.
