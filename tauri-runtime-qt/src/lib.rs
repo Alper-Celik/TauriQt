@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! A Qt runtime for Tauri 2 on Linux: Qt windowing replaces tao, QtWebEngine
 //! replaces WebKitGTK. The crate implements `tauri_runtime::Runtime`, so an app

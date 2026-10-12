@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
 # Integrations — running other people's apps on this runtime
 

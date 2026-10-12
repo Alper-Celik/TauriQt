@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 // Runtime-level Qt glue: native platform handles and the event-loop pump that
 // drains Rust's user-event queue into the sink installed by `run()`

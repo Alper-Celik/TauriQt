@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //
 // Tiny CDP client helpers shared by tools/cdp-probe/{probe,mitm}.mjs.
 // No npm dependencies: Node's built-in global `WebSocket` and `fetch`

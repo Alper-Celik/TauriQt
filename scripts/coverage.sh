@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Merged code coverage for the whole stack (Rust + C++), driven by the real
 # harnesses rather than `cargo test`: the runtime crate has no unit-test binary

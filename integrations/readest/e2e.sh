@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Run Readest's own e2e specs against a Readest that is already running on the
 # Qt runtime (integrations/readest/run.sh opens its DevTools port).

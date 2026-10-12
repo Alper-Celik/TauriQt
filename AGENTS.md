@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
 # Notes for agents working in this repository
 
@@ -48,13 +48,15 @@ fight the tooling.
 
 ## Conventions this repository expects
 
-- **REUSE is required and enforced** (`just lint-reuse`). Add the two SPDX tags — the
-  copyright one, and the licence one whose value is `MIT` — to every new file that can hold a
-  comment — markdown gets the two-line HTML comment, shell gets it under the shebang,
-  `.gitignore`/`Cargo.toml` get `#` lines. `REUSE.toml` is only for formats that cannot
-  (JSON, generated lockfiles, binaries, captured probe dumps) and every entry there carries a
-  comment saying why; do not widen it to `path = ["**"]`, which would override the headers of
-  real files — including any third-party file that lands here.
+- **REUSE is required and enforced** (`just lint-reuse`). Every file carries the two SPDX
+  tags — the copyright one, and the licence one, whose value is `MIT OR Apache-2.0` — either
+  inline (markdown gets the two-line HTML comment, shell gets it under the shebang,
+  `.gitignore`/`Cargo.toml` get `#` lines) or, when the format cannot hold a comment (JSON,
+  generated lockfiles, binaries, `.patch` diffs, captured probe dumps), in a `<file>.license`
+  sidecar beside it. There is no `REUSE.toml`: a sidecar takes precedence over the file it
+  annotates, which is also what keeps the captured CDP dumps — one embeds a DOM node whose
+  text is an SPDX tag — a valid expression. Licence texts live in `LICENSES/` (`MIT.txt`,
+  `Apache-2.0.txt`).
 - Commits are expected as you go (this repo is agent-written; the history is the record).
   Keep the message about the behaviour, not the process.
 - Docs live beside the thing they describe: `docs/*-findings.md` for measurements,

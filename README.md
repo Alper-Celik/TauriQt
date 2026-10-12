@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
 # TauriQt
 
@@ -175,7 +175,8 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
 ## Licence
 
-MIT (`LICENSES/MIT.txt`). [REUSE](https://reuse.software/) compliance is enforced by
-`just lint-reuse`: every file that can hold a comment carries inline SPDX tags (markdown and
-shell included), and [`REUSE.toml`](REUSE.toml) annotates only what cannot — generated
-lockfiles, JSON, a binary icon, and the captured probe artifacts — each group with its reason.
+Dual-licensed under MIT (`LICENSES/MIT.txt`) or Apache-2.0 (`LICENSES/Apache-2.0.txt`), at
+your option. [REUSE](https://reuse.software/) compliance is enforced by `just lint-reuse`:
+every file carries SPDX tags — inline where the format can hold a comment (markdown and shell
+included), in a `<file>.license` sidecar where it cannot (JSON, generated lockfiles, the
+binary icon, captured probe dumps).

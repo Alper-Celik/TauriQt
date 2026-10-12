@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! TauriQt — a Tauri 2 app that runs on the Qt runtime (Qt windowing +
 //! QtWebEngine) on Linux and falls back to the stock wry runtime elsewhere

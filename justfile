@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Dev entry points. Every recipe is a thin wrapper: the logic lives in scripts/
 # and in the flake checks (nix build .#checks.<system>.<name>), which is what CI

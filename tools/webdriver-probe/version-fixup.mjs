@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //
 // Minimal HTTP fix-up in front of QtWebEngine's DevTools endpoint.
 //

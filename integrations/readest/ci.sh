@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # CI entry point for the Readest integration: prepare a pinned checkout, run
 # Readest's own Rust suite against a build that links this runtime, then boot the

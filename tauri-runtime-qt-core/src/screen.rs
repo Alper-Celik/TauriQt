@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Unit conversions for `ops::screen`: Qt answers in device-independent
 //! (logical) pixels, tauri's `Monitor` reports physical ones.

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Window conversions and builder mapping: the pure half of `ops::window` plus
 //! the `WindowConfig` → `QtWindowBuilder` field mapping from `lib.rs`.

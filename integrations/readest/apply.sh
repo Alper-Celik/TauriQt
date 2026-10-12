@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 # Put Readest on the Qt runtime: clone it at the pinned commit, apply the patch
 # kept next to this script, and point the patched manifest at this repo's
 # `tauri-runtime-qt`.

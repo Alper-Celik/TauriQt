@@ -1,5 +1,5 @@
 <!-- SPDX-FileCopyrightText: 2026 Alper Çelik -->
-<!-- SPDX-License-Identifier: MIT -->
+<!-- SPDX-License-Identifier: MIT OR Apache-2.0 -->
 
 # Nix ⇄ Qt ⇄ sandbox gotchas (all measured in this repo)
 

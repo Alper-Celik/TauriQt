@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # Wayland-first end-to-end smoke test: boots a private headless sway session
 # (scripts/sway-session.sh — wlroots headless backend, pixman software renderer),

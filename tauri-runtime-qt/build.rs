@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Build the Rust <-> Qt bridge with plain `cxx` and let `qt-build-utils`
 //! resolve the Qt module flags (it is what cxx-qt uses internally, without the

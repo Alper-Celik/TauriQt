@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SPDX-FileCopyrightText: 2026 Alper Çelik
-# SPDX-License-Identifier: MIT
+# SPDX-License-Identifier: MIT OR Apache-2.0
 #
 # sway-oracle.sh — drive the Qt runtime under a headless Wayland compositor and
 # use the *compositor* as an external oracle for window state.

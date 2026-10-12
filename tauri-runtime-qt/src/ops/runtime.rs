@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Runtime-level operations (owned by the runtime worker): raw window/display
 //! handles, the cross-thread event proxy and event-loop control.

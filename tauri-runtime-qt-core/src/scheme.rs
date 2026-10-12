@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 //! Custom-scheme bridge payloads: the encoding of the `(method, url, headers,
 //! body)` block Qt hands the runtime, and of the response it hands back.

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 //
 // Drives ChromeDriver over its plain HTTP endpoint (no npm deps) against a
 // running TauriQt app whose QtWebEngine DevTools port is open, and records

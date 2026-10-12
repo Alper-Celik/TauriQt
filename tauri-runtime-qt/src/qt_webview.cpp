@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: MIT OR Apache-2.0
 
 // Qt-backed webview registry (see qt_webview.hpp for the threading contract:
 // every entry point here runs on the Qt GUI thread).
