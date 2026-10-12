@@ -61,11 +61,14 @@ trap cleanup EXIT INT TERM
 
 # Up to 30 min. The app is a *grandchild* of this script (run.sh -> tauri ->
 # cargo -> Readest), so `$run_pid` is not a liveness signal, and neither is the
-# binary alone: while the build runs there is no `Readest` yet, only `cargo`.
-# "Dead" therefore means the whole chain is gone — checked twice, five seconds
-# apart, so a short gap between cargo and the binary is not mistaken for a crash.
+# binary alone: the chain opens inside run.sh waiting on `next dev` (tauri is
+# not exec'd yet), and later sits in the build, where there is no `Readest` yet,
+# only `cargo`. Matching every phase — the wrapper script, the dev server, the
+# tauri CLI, cargo, the binary — means "dead" is only reported once the whole
+# chain is gone: checked twice, five seconds apart, so a short gap between
+# phases is not mistaken for a crash.
 chain_alive() {
-  pgrep -f 'tauri.js dev|target/debug/Readest|cargo run' >/dev/null
+  pgrep -f 'run\.sh|next dev|tauri\.js dev|target/debug/Readest|cargo run' >/dev/null
 }
 ready=0
 for _ in $(seq 1 360); do
