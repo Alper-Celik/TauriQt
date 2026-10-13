@@ -43,8 +43,15 @@ jobs:
         # `runner` is only available inside a step, not in a job-level env.
         env:
           INTEGRATION_CHECKOUT: ${{ runner.temp }}/${{ matrix.app }}-checkout
+          # Where ci.sh writes failure diagnostics; results/ is uploaded below
+          # regardless of the job's outcome.
+          CI_DIAG_DIR: ${{ github.workspace }}/results/diagnostics
         run: |
           set -o pipefail
+          # ci.sh writes failure diagnostics (CDP target list, memory, log
+          # tails) here when CI_DIAG_DIR points at it, and the step below
+          # uploads results/ regardless of the job's outcome.
+          mkdir -p results/diagnostics
           nix develop .#ci -c "${{ matrix.entry }}" \
             2>&1 | tee "app-${{ matrix.app }}-${{ matrix.system }}.log"
       - name: Record result and log tail
