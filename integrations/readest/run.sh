@@ -35,6 +35,10 @@ export QTWEBENGINE_CHROMIUM_FLAGS="${QTWEBENGINE_CHROMIUM_FLAGS:---no-sandbox --
 # A build sandbox has no display; callers that have one (or a headless sway
 # session) override this.
 export QT_QPA_PLATFORM="${QT_QPA_PLATFORM:-offscreen}"
+# Qt logs to syslog, not stderr, when stderr is not a terminal — which is
+# exactly how ci.sh runs this (output redirected to a file). Without this the
+# app's Qt-side output vanishes from every log the run keeps.
+export QT_FORCE_STDERR_LOGGING="${QT_FORCE_STDERR_LOGGING:-1}"
 
 cleanup() {
   [[ -n "${DEV_PID:-}" ]] && kill "$DEV_PID" 2>/dev/null || true
@@ -45,21 +49,23 @@ trap cleanup EXIT INT TERM
 # Readest's beforeDevCommand is `dotenv -e .env.tauri -- next dev` and the repo
 # ships no .env.tauri, so serve the frontend here and tell tauri not to (the
 # same dodge their own scripts/test-tauri.sh uses).
-if curl -sf "http://localhost:3000" >/dev/null 2>&1; then
+if curl -sf --max-time 5 "http://localhost:3000" >/dev/null 2>&1; then
   echo "dev server already up on :3000"
 else
   echo "starting next dev on :3000"
   (cd "$app" && exec node_modules/.bin/next dev) >"$checkout/next-dev.log" 2>&1 &
   DEV_PID=$!
   for _ in $(seq 1 120); do
-    curl -sf "http://localhost:3000" >/dev/null 2>&1 && break
+    # --max-time keeps a dev server that accepts but never answers from
+    # stretching a single poll (and this whole wait) without bound.
+    curl -sf --max-time 5 "http://localhost:3000" >/dev/null 2>&1 && break
     kill -0 "$DEV_PID" 2>/dev/null || {
       echo "next dev died; see $checkout/next-dev.log" >&2
       exit 1
     }
     sleep 1
   done
-  curl -sf "http://localhost:3000" >/dev/null 2>&1 || {
+  curl -sf --max-time 5 "http://localhost:3000" >/dev/null 2>&1 || {
     echo "next dev never became ready" >&2
     exit 1
   }

@@ -146,6 +146,35 @@ is what tao does there, so both plugin branches work: the first launch shows the
 and once a state file exists its restore path succeeds as well.
 `QT_QPA_PLATFORM=xcb` remains a local workaround for a build that predates the fix.
 
+## What the nightly runs found (2026-10-12, 2026-10-13)
+
+Both scheduled runs failed in the boot-and-assert stage, each with almost
+nothing left to diagnose from, which is why the harness now captures evidence
+instead of trusting a single sample:
+
+| Run | Symptom | What was knowable afterwards |
+|---|---|---|
+| 2026-10-12 | `the app never came up on 9333` — the whole process chain (run.sh → next dev → tauri → cargo) was gone ~7 min after boot started | ci-run.log held a single line (`starting next dev on :3000`); next-dev.log was never uploaded and Qt had routed its logging to syslog, so the cause left the runner with the job |
+| 2026-10-13 | the wait matched `:3000` in `/json/list`, then `check.mjs`'s single sample seconds later found exactly one page target with an **empty url** (`FAIL a page whose url contains "localhost:3000" (1 page target(s): (none))`) | an un-navigated page lists an empty url — but a one-shot sample cannot distinguish "still committing its first navigation" from "the app's page is gone", and the full target list (other types, other urls) was never printed |
+
+Harness changes following from those two:
+
+- Readiness now means a **page** target (`type == "page"`) whose url contains
+  the dev url, stable across two polls five seconds apart — not `:3000`
+  appearing anywhere in `/json/list`.
+- `check.mjs` accepts `--page-wait-ms` and polls the target list for that long
+  before declaring the page missing; ci.sh passes 60s. On failure it prints
+  every target with its type and url.
+- Every failure path dumps a diagnostics set into the job's artifact
+  (`results/diagnostics/` via `CI_DIAG_DIR`): the verbatim `/json/list`,
+  memory + pressure info, the process table, and the tails of `ci-run.log` and
+  `next-dev.log` — the two files whose absence made the first failure
+  undiagnosable.
+- `run.sh` exports `QT_FORCE_STDERR_LOGGING=1` (same convention as the repo's
+  own harnesses: Qt logs to syslog when stderr is not a tty) and bounds its
+  dev-server readiness curls with `--max-time`, so a server that accepts but
+  never answers cannot stall the wait invisibly.
+
 ## Expectations
 
 - Readest exercises far more of the runtime than our demo: multiple windows, window-state

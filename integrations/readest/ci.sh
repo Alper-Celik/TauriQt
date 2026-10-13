@@ -20,8 +20,50 @@ repo="$(cd "$here/../.." && pwd)"
 checkout="${READEST_CHECKOUT:-${INTEGRATION_CHECKOUT:-$HOME/readest-qt-checkout}}"
 app="$checkout/apps/readest-app"
 CDP_PORT="${READEST_CDP_PORT:-9333}"
+# The page this integration waits for and asserts on: one substring, used by
+# the readiness poll below and handed to check.mjs so the two cannot drift.
+url_sub="${READEST_URL_SUBSTRING:-localhost:3000}"
+# How long check.mjs may poll for the page target before giving up (the boot
+# has been observed to leave the only page target un-navigated — empty url —
+# for seconds after the dev server was already reachable over CDP).
+page_wait_ms="${READEST_PAGE_WAIT_MS:-60000}"
 
 fail() { echo "::error::$*" >&2; exit 1; }
+
+# Where failure evidence is written. CI points this at the artifact's results/
+# directory (apps.yml exports CI_DIAG_DIR); standalone runs get a folder beside
+# the checkout.
+diag_dir="${CI_DIAG_DIR:-$checkout/diagnostics}"
+
+# Evidence for a post-mortem, gathered while the scene is still intact: what
+# the DevTools port lists (every target, not just pages), what the machine's
+# memory looked like, and the tails of both logs the boot writes. The nightly
+# runs of 2026-10-12 and 2026-10-13 both failed with almost nothing to diagnose
+# from: ci-run.log stays on the runner, next-dev.log was never uploaded, and
+# Qt routes its logging to syslog when stderr is not a tty. Echoed to stderr as
+# well so the job log carries it.
+dump_diagnostics() {
+  mkdir -p "$diag_dir"
+  {
+    echo "## utc"; date -u
+    echo "## CDP /json/list (all targets, verbatim)"
+    curl -sf --max-time 5 "http://127.0.0.1:$CDP_PORT/json/list" 2>/dev/null ||
+      echo "(CDP endpoint unreachable on $CDP_PORT)"
+    echo
+    echo "## memory"; free -h 2>/dev/null || true
+    echo "## memory pressure (PSI)"; cat /proc/pressure/memory 2>/dev/null || true
+    echo "## processes by RSS"
+    ps -eo pid,ppid,rss,pmem,args --sort=-rss 2>/dev/null | head -20 || true
+  } >"$diag_dir/system.txt" 2>&1
+  echo "== diagnostics (full set in $diag_dir) ==" >&2
+  sed 's/^/  /' "$diag_dir/system.txt" >&2
+  for f in "$checkout/ci-run.log" "$checkout/next-dev.log"; do
+    [[ -f "$f" ]] || continue
+    tail -200 "$f" >"$diag_dir/$(basename "$f").tail" 2>/dev/null || true
+    echo "-- tail: $f --" >&2
+    tail -40 "$f" >&2 || true
+  done
+}
 
 echo "== environment =="
 df -h "$checkout" 2>/dev/null | tail -1 || df -h "$(dirname "$checkout")" | tail -1
@@ -70,11 +112,29 @@ trap cleanup EXIT INT TERM
 chain_alive() {
   pgrep -f 'run\.sh|next dev|tauri\.js dev|target/debug/Readest|cargo run' >/dev/null
 }
+# Ready means: a *page* target on the DevTools port already names the dev
+# server, and does so on two consecutive polls five seconds apart. The earlier
+# grep matched ":3000" anywhere in /json/list — any target type, any field —
+# and check.mjs then sampled the target list once, seconds later: on the
+# 2026-10-13 nightly run the only page target it saw was still un-navigated
+# (empty url), which failed the run even though the wait had just matched.
+page_ready() {
+  curl -sf --max-time 5 "http://127.0.0.1:$CDP_PORT/json/list" 2>/dev/null |
+    jq -e --arg sub "$url_sub" \
+      'any(.[]; .type == "page" and ((.url // "") | contains($sub)))'
+}
+
 ready=0
+stable=0
 for _ in $(seq 1 360); do
-  if curl -sf "http://127.0.0.1:$CDP_PORT/json/list" 2>/dev/null | grep -q ':3000'; then
-    ready=1
-    break
+  if page_ready; then
+    stable=$((stable + 1))
+    if [[ "$stable" -ge 2 ]]; then
+      ready=1
+      break
+    fi
+  else
+    stable=0
   fi
   if ! chain_alive; then
     sleep 5
@@ -83,11 +143,17 @@ for _ in $(seq 1 360); do
   sleep 5
 done
 if [[ "$ready" != "1" ]]; then
-  tail -30 "$checkout/ci-run.log" >&2 || true
-  fail "the app never came up on $CDP_PORT (see the log tail above)"
+  dump_diagnostics
+  fail "the app never came up on $CDP_PORT (diagnostics above; full set in $diag_dir)"
 fi
 
 echo "== assertions over CDP (the app's page, the app's commands) =="
-node "$here/check.mjs" --port "$CDP_PORT"
+# check.mjs polls for the page target itself now (bounded by --page-wait-ms);
+# if it still fails, the dump is the post-mortem.
+if ! node "$here/check.mjs" --port "$CDP_PORT" \
+    --url-substring "$url_sub" --page-wait-ms "$page_wait_ms"; then
+  dump_diagnostics
+  fail "check.mjs failed (diagnostics above; full set in $diag_dir)"
+fi
 
 echo "== readest: all stages passed =="

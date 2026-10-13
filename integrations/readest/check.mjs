@@ -6,6 +6,7 @@
 //
 //   node integrations/readest/check.mjs [--port 9222] [--timeout-ms 5000]
 //                                      [--url-substring localhost:3000]
+//                                      [--page-wait-ms 0]
 //
 // Start the app first: integrations/readest/run.sh opens CDP on 9222.
 //
@@ -16,16 +17,22 @@
 // (INVOKE_SYSTEM_SCRIPT) did its job. On a build without that wiring the call
 // never reaches Rust.
 //
+// A page that is navigating (or was just re-created by the app) can list an
+// empty url for a few seconds; `--page-wait-ms N` polls the target list for
+// that long before declaring the page missing. The default (0) keeps the
+// standalone single-shot behaviour; ci.sh passes a bounded window.
+//
 // Exit codes: 0 all checks passed, 1 a check failed, 2 no CDP endpoint.
 
-const args = { port: 9222, timeoutMs: 5000, urlSubstring: 'localhost:3000' };
+const args = { port: 9222, timeoutMs: 5000, urlSubstring: 'localhost:3000', pageWaitMs: 0 };
 for (let i = 2; i < process.argv.length; i += 1) {
   const [key, value] = [process.argv[i], process.argv[i + 1]];
   if (key === '--port') { args.port = Number(value); i += 1; }
   else if (key === '--timeout-ms') { args.timeoutMs = Number(value); i += 1; }
   else if (key === '--url-substring') { args.urlSubstring = value; i += 1; }
+  else if (key === '--page-wait-ms') { args.pageWaitMs = Number(value); i += 1; }
   else if (key === '--help') {
-    console.log('usage: check.mjs [--port N] [--timeout-ms N] [--url-substring S]');
+    console.log('usage: check.mjs [--port N] [--timeout-ms N] [--url-substring S] [--page-wait-ms N]');
     process.exit(0);
   }
 }
@@ -113,16 +120,30 @@ try {
   process.exit(2);
 }
 
-const targets = await httpJson('/json/list');
-const pages = targets.filter((t) => t.type === 'page');
-const page = pages.find((t) => (t.url ?? '').includes(args.urlSubstring));
+// A page target's url is empty until its navigation commits, and the app can
+// re-create its window moments after boot — so the target list is polled for
+// `pageWaitMs` (0: sample once, the old standalone behaviour) instead of
+// judged from one sample.
+const pageDeadline = Date.now() + args.pageWaitMs;
+let targets = [];
+let page = null;
+for (;;) {
+  targets = await httpJson('/json/list');
+  page = targets.find((t) => t.type === 'page' && (t.url ?? '').includes(args.urlSubstring));
+  if (page || Date.now() >= pageDeadline) break;
+  await new Promise((done) => setTimeout(done, 1000));
+}
 if (!page) {
   // Do not silently probe whatever target happens to be first: another browser
-  // (or an app instance that has not navigated yet) can own the port.
+  // (or an app instance that has not navigated yet) can own the port. List
+  // every target with its type — the page whose url is still empty is
+  // indistinguishable from "wrong page" without that.
+  const pages = targets.filter((t) => t.type === 'page');
+  const allTargets = targets.map((t) => `${t.type}:${(t.url ?? '') || '(no url)'}`).join(' | ') || '(none)';
   report(
     `a page whose url contains "${args.urlSubstring}"`,
     false,
-    `${pages.length} page target(s): ${pages.map((t) => t.url || '(none)').join(' ')}`,
+    `${pages.length} page target(s): ${pages.map((t) => t.url || '(none)').join(' ')}; all targets: ${allTargets}`,
   );
   process.exit(1);
 }
