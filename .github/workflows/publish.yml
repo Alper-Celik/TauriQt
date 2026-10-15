@@ -15,11 +15,21 @@
 # commit CI never passed is refused rather than released. (Any green run counts,
 # so a later flaky cell does not retroactively block a release.)
 #
-# The upload needs the repository secret CARGO_REGISTRY_TOKEN (a crates.io token
-# with `publish-new` + `publish-update`). A missing token fails the job instead
-# of skipping quietly: the trigger is an explicit release, and a green run that
-# uploaded nothing would be the worst outcome. `workflow_dispatch` with `dry-run`
-# left on packages and verify-builds both crates without a token at all.
+# Authentication is crates.io's trusted publishing (RFC 3691): this workflow
+# proves who it is with GitHub's OIDC token and gets a short-lived crates.io token
+# in return, so there is **no repository secret** and no long-lived credential
+# anywhere near the release. rust-lang/crates-io-auth-action revokes the token in
+# its post step. One token covers both crates — the crates.io configuration is
+# per crate, but it trusts *this workflow*, not a token.
+#
+# One-time bootstrap, because crates.io only accepts that configuration on a crate
+# that already exists: create an API token, `cargo login`, publish the first
+# release by hand (`just publish`), then add the trusted publisher to both crates
+# (Settings -> Trusted Publishing: owner `Alper-Celik`, repository `TauriQt`,
+# workflow `publish.yml`). From then on a tag needs nothing set up anywhere.
+#
+# `workflow_dispatch` with `dry-run` left on packages and verify-builds both
+# crates without minting a token at all.
 #
 # x86_64 only, and not part of ci.yml's graph (`ci.yml` builds on a push to
 # `main`, which a tag push does not match): the crates are
@@ -41,6 +51,8 @@ permissions:
   contents: read
   # To read the CI runs of this commit (the gate below).
   actions: read
+  # To mint the crates.io token through GitHub's OIDC provider.
+  id-token: write
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -52,10 +64,6 @@ jobs:
     name: crates.io
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      # `secrets` is not usable in a step-level `if`, so it is read once here;
-      # the "upload anything" condition reads this instead.
-      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
     steps:
       - uses: actions/checkout@v7
       - uses: samueldr/lix-gha-installer-action@v2026-06-15
@@ -115,21 +123,19 @@ jobs:
         run: |
           set -o pipefail
           env LD_LIBRARY_PATH= nix develop .#ci -c scripts/publish.sh --dry-run 2>&1 | tee publish-dry-run.log
-      - name: Require the crates.io token
+      - name: Authenticate with crates.io (trusted publishing)
+        id: auth
         if: github.event_name == 'push' || inputs.dry-run == false
-        shell: bash
-        run: |
-          if [[ -z "$CARGO_REGISTRY_TOKEN" ]]; then
-            echo "::error::no CARGO_REGISTRY_TOKEN secret; add a crates.io token with publish-new + publish-update (Settings -> Secrets and variables -> Actions)"
-            exit 1
-          fi
+        uses: rust-lang/crates-io-auth-action@v1
       - name: Publish to crates.io
         if: github.event_name == 'push' || inputs.dry-run == false
         shell: bash
+        env:
+          # Minted for this run and revoked by the action's post step; versions
+          # already on the registry are skipped, so this is safe to re-run.
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           set -o pipefail
-          # CARGO_REGISTRY_TOKEN is inherited by the dev shell; versions already
-          # on the registry are skipped, so this is safe to re-run.
           env LD_LIBRARY_PATH= nix develop .#ci -c scripts/publish.sh 2>&1 | tee publish.log
       - name: Write the run summary
         if: always()

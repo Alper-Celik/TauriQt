@@ -187,12 +187,31 @@ crates.io are skipped, so a release that half-succeeded is finished by re-runnin
 workflow; `workflow_dispatch` runs the same job as a **dry run** (packaged and verify-built,
 nothing uploaded, no token needed).
 
-The upload needs one repository secret — `CARGO_REGISTRY_TOKEN`, a crates.io token with
-`publish-new` + `publish-update` — and its absence fails the job rather than skipping the
-upload quietly: a green release run that published nothing would be the worst outcome.
+Authentication is crates.io's **trusted publishing**: the job asks GitHub for an OIDC token
+(`id-token: write`) and `rust-lang/crates-io-auth-action` exchanges it for a short-lived
+crates.io token, which the action's post step revokes. **No repository secret**, and one token
+covers both crates — the crates.io configuration is per crate, but what it trusts is *this
+workflow*, not a token.
 
-The same two steps by hand are `just publish-dry` and `just publish` (`scripts/publish.sh`)
-for the cases CI is not the right tool for. It encodes the ordering trap both paths share:
+That configuration can only be attached to a crate that already exists, so the first release
+is one-time manual work:
+
+```bash
+cargo login art_…                 # API token from https://crates.io/settings/tokens
+just release 0.0.1                # commits + tags v0.0.1 locally, pushes nothing
+just publish                      # publishes both crates' 0.0.1
+# then, on crates.io, for *both* crates: Settings → Trusted Publishing →
+#   owner Alper-Celik, repository TauriQt, workflow publish.yml
+git push origin main && git push origin v0.0.1   # green: mints a token, publishes nothing new
+```
+
+From then on `just release --push` is the whole release, and the tag run proves the OIDC path
+by minting a token even when the version is already up. (An *environment* — `environment:` in
+the job plus the same name in the crates.io config — is optional extra hardening; nothing here
+sets one, so the config's environment field stays empty.)
+
+The same two steps by hand are `just publish-dry` and `just publish` (`scripts/publish.sh`),
+which is also the bootstrap above. It encodes the ordering trap both paths share:
 `cargo publish` builds the *packaged* crate, where the path dependency on the core crate has
 been rewritten to a registry version, so core has to be on crates.io before the runtime half
 can even be packaged. It refuses a dirty tree and version skew, and skips versions that are

@@ -93,7 +93,7 @@ fi
 [[ -z "$(git status --porcelain)" ]] || { echo "working tree is dirty; commit first" >&2; exit 1; }
 
 if [[ -z "${CARGO_REGISTRY_TOKEN:-}" && ! -f "${CARGO_HOME:-$HOME/.cargo}/credentials.toml" ]]; then
-  echo "no crates.io token: export CARGO_REGISTRY_TOKEN or run cargo login" >&2
+  echo "no crates.io token: export CARGO_REGISTRY_TOKEN or run cargo login (CI mints one via trusted publishing)" >&2
   exit 1
 fi
 
