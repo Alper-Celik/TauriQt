@@ -8,12 +8,14 @@
 # — a forgotten bump fails here, before anything reaches the registry — and the
 # script this calls refuses a dirty tree and version skew (`scripts/publish.sh`).
 #
-# Nothing publishes from a commit CI has not graded: the first step waits for at
-# least one green CI run of this commit and fails when every run that finished
-# disagreed, or when none appears in 30 minutes. Tagging right after pushing
-# therefore works — the job waits for the graph to finish — while a tag on a
-# commit CI never passed is refused rather than released. (Any green run counts,
-# so a later flaky cell does not retroactively block a release.)
+# Nothing publishes from a release CI has not graded: the first step requires the
+# tag to be *in* main and waits for main's tip to be green — GitHub attaches a CI
+# run to the tip of a push, so a tag on an ancestor commit has no run of its own
+# (that is what hung the v0.0.1 run). It fails when every finished run disagreed,
+# or when none appears in 30 minutes. Tagging right after pushing therefore works
+# — the job waits for the graph to finish — while a tag on a commit CI never
+# passed is refused rather than released. (Any green run counts, so a later flaky
+# cell does not retroactively block a release.)
 #
 # Authentication is crates.io's trusted publishing (RFC 3691): this workflow
 # proves who it is with GitHub's OIDC token and gets a short-lived crates.io token
@@ -65,7 +67,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
+      # Full history: the gate below asks whether the tagged commit is contained
+      # in main, which needs the commit graph, not one commit.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: samueldr/lix-gha-installer-action@v2026-06-15
         with:
           extra_nix_config: experimental-features = nix-command flakes
@@ -74,11 +80,25 @@ jobs:
           primary-key: nix-x86_64-linux-${{ hashFiles('flake.lock', 'Cargo.lock') }}
           restore-prefixes-first-match: nix-x86_64-linux-
           gc-max-store-size-linux: 8G
-      - name: Wait for CI to have graded this commit
+      - name: Wait for CI to have graded this release
+        if: github.event_name == 'push' || inputs.dry-run == false
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # What has to be graded is the *release*, and GitHub attaches a CI run to
+          # the tip of the push that triggered it — so a tag on anything but main's
+          # very latest commit (an ancestor, which is the normal case when a commit
+          # lands between the tag and the push, and the very case that hung a
+          # release on 2026-10-15) has no run of its own. The rule is therefore:
+          # the tag is on main, and main's tip is green.
+          git fetch --quiet origin main
+          tip="$(git rev-parse FETCH_HEAD)"
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "$tip"; then
+            echo "::error::$GITHUB_SHA is not in main's history (tip $tip); releases are cut from main, so nothing has graded this commit"
+            exit 1
+          fi
+          echo "releasing ${GITHUB_SHA}, contained in main's tip ${tip}"
           # curl + grep rather than gh: the runner provides Nix and nothing else
           # (see ci.yml), and this needs no JSON tooling of its own. Every
           # pipeline is `|| true`-guarded: `grep -o` exits 1 on no match, and
@@ -88,25 +108,25 @@ jobs:
           while :; do
             body="$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" \
               -H 'Accept: application/vnd.github+json' \
-              "$api?head_sha=${GITHUB_SHA}&per_page=100" || true)"
+              "$api?head_sha=${tip}&per_page=100" || true)"
             if printf '%s' "$body" | grep -q '"conclusion": *"success"'; then
-              echo "CI has a green run for ${GITHUB_SHA}"
+              echo "CI is green for ${tip}"
               break
             fi
             finished="$(printf '%s' "$body" | grep -o '"conclusion": *"[a-z_]*"' | cut -d'"' -f4 | sort -u || true)"
             unfinished="$(printf '%s' "$body" | grep -o '"status": *"[a-z_]*"' | cut -d'"' -f4 | grep -vx completed || true)"
             if [[ -n "$finished" && -z "$unfinished" ]]; then
-              echo "::error::every CI run for ${GITHUB_SHA} finished without a success (${finished//$'\n'/ }); fix it and re-run this workflow"
+              echo "::error::every CI run for main's tip ${tip} finished without a success (${finished//$'\n'/ }); fix main and re-run this workflow"
               exit 1
             fi
             if [[ -z "$finished" && -z "$unfinished" && "$SECONDS" -ge "$deadline" ]]; then
-              echo "::error::no CI run for ${GITHUB_SHA} appeared in 30 min; dispatch one (gh workflow run CI), then re-run this workflow"
+              echo "::error::no CI run for main's tip ${tip} appeared in 30 min; dispatch one (gh workflow run CI), then re-run this workflow"
               exit 1
             fi
             if [[ -z "$finished" && -z "$unfinished" ]]; then
-              echo "no CI run for ${GITHUB_SHA} yet…"
+              echo "no CI run for main's tip ${tip} yet…"
             else
-              echo "waiting for CI on ${GITHUB_SHA} (finished:${finished:-none} unfinished:${unfinished:-none})…"
+              echo "waiting for CI on ${tip} (finished:${finished:-none} unfinished:${unfinished:-none})…"
             fi
             sleep 30
           done
