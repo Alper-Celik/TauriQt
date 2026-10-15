@@ -85,6 +85,11 @@ coverage-html:
 
 # ---------------------------------------------------------------- release -----
 
+# cut a release: bump both crates' version, commit it and tag it (patch by
+# default; `just release minor`, `just release 1.0.0`, …); the tag publishes
+release *args:
+    nix develop -c scripts/release.sh {{args}}
+
 # package + verify-build both runtime crates, upload nothing
 publish-dry:
     nix develop -c scripts/publish.sh --dry-run

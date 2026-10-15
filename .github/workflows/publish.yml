@@ -3,7 +3,7 @@
 #
 # `publish` — upload the two runtime crates to crates.io from CI.
 #
-# Trigger is the version tag (`v0.1.0`), because that is the one thing that says
+# Trigger is the version tag (`v0.0.1`), because that is the one thing that says
 # "this commit is a release". The tag has to agree with the manifests' `version`
 # — a forgotten bump fails here, before anything reaches the registry — and the
 # script this calls refuses a dirty tree and version skew (`scripts/publish.sh`).

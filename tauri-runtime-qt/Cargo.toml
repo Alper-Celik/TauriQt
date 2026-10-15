@@ -3,7 +3,7 @@
 
 [package]
 name = "tauri-runtime-qt"
-version = "0.1.0"
+version = "0.0.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Tauri 2 on Qt: Qt Widgets windows and a QtWebEngine webview instead of wry, on Linux"
@@ -28,7 +28,7 @@ cxx = "1"
 http = "1"
 parking_lot = "0.12"
 tauri-runtime = "2"
-tauri-runtime-qt-core = { path = "../tauri-runtime-qt-core", version = "0.1.0" }
+tauri-runtime-qt-core = { path = "../tauri-runtime-qt-core", version = "0.0.0" }
 tauri-utils = "2"
 url = "2"
 cookie = "0.18"

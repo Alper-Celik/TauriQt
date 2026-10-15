@@ -164,31 +164,37 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
 ## Publishing
 
-Releasing is a tag. Bump `version` in both crate manifests — CI checks them against the tag
-and against each other, and the runtime's dependency on the core crate names the same version
-— commit, push, then:
+Releasing is one command:
 
 ```bash
-git tag v0.1.0 && git push origin v0.1.0
+just release --push          # bump, commit, tag, push — patch by default
+just release minor --push    # breaking under 0.0.x (0.0.5 -> 0.1.0)
+just release 0.2.0 --push    # an exact version
 ```
 
-`.github/workflows/publish.yml` does the rest, in this order: wait for **that commit's CI run
-to finish** (a tag that has not been graded is refused, not released; tagging right after
-pushing just waits), check the tag against the manifests, package and verify-build both
-crates, then upload `tauri-runtime-qt-core` and — after waiting for its entry in the sparse
-index cargo resolves against — `tauri-runtime-qt`. Versions already on crates.io are skipped,
-so a release that half-succeeded is finished by re-running the workflow;
-`workflow_dispatch` runs the same job as a **dry run** (packaged and verify-built, nothing
-uploaded, no token needed).
+`scripts/release.sh` bumps the version in both manifests (and in the runtime's dependency on
+the core crate), commits it, and tags that commit `v<version>`. The manifests carry **0.0.0**
+until the first release, so the first default bump lands exactly `0.0.1`. Patch is the
+default because 0.0.x is the only series a `tauri-runtime-qt = "0.0"` requirement keeps
+resolving — under 0.0.x a minor bump is a breaking change by semver and needs that edit.
+
+The tag is the release. `.github/workflows/publish.yml` does the rest, in this order: wait for
+**that commit's CI run to finish** (a tag that has not been graded is refused, not released;
+tagging right after pushing just waits), check the tag against the manifests, package and
+verify-build both crates, then upload `tauri-runtime-qt-core` and — after waiting for its
+entry in the sparse index cargo resolves against — `tauri-runtime-qt`. Versions already on
+crates.io are skipped, so a release that half-succeeded is finished by re-running the
+workflow; `workflow_dispatch` runs the same job as a **dry run** (packaged and verify-built,
+nothing uploaded, no token needed).
 
 The upload needs one repository secret — `CARGO_REGISTRY_TOKEN`, a crates.io token with
 `publish-new` + `publish-update` — and its absence fails the job rather than skipping the
 upload quietly: a green release run that published nothing would be the worst outcome.
 
-`scripts/publish.sh` is the same procedure by hand (`just publish-dry`, `just publish`) for
-the cases CI is not the right tool for. It encodes the ordering trap both paths share:
+The same two steps by hand are `just publish-dry` and `just publish` (`scripts/publish.sh`)
+for the cases CI is not the right tool for. It encodes the ordering trap both paths share:
 `cargo publish` builds the *packaged* crate, where the path dependency on the core crate has
-been rewritten to `version = "0.1.0"`, so core has to be on crates.io before the runtime half
+been rewritten to a registry version, so core has to be on crates.io before the runtime half
 can even be packaged. It refuses a dirty tree and version skew, and skips versions that are
 already up. Only the two runtime crates publish; the `tauriqt` demo is `publish = false`.
 
@@ -203,7 +209,7 @@ Two costs worth knowing:
   Qt Widgets + WebEngineWidgets qmake finds — the requirement does not disappear because the
   crate comes from a registry.
 
-Once a version is on crates.io, `tauri-runtime-qt = "0.1"` replaces the path dependency in
+Once a version is on crates.io, `tauri-runtime-qt = "0.0"` replaces the path dependency in
 "Use it in your app" above; the wiring is identical either way.
 
 ## Known limits (structural, not bugs in progress)
