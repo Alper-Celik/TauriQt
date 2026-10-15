@@ -88,6 +88,15 @@ if [[ "$ready" != "1" ]]; then
 fi
 
 echo "== assertions over CDP (the app's page, the app's commands) =="
-node "$here/check.mjs" --port "$CDP_PORT"
+if ! node "$here/check.mjs" --port "$CDP_PORT"; then
+  # A CDP failure is explained on the app's side (was the window mapped? did the
+  # page load? did a scheme handler refuse?), and that log is written outside
+  # CI's captured output — without it the next such failure is undiagnosable.
+  echo "== the app's log (last 40 lines of $checkout/ci-run.log) ==" >&2
+  tail -40 "$checkout/ci-run.log" >&2 || true
+  echo "== the frontend dev server (last 20 lines of $checkout/next-dev.log) ==" >&2
+  tail -20 "$checkout/next-dev.log" >&2 || true
+  fail "the CDP checks against the running app failed (log tails above)"
+fi
 
 echo "== readest: all stages passed =="

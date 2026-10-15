@@ -5,9 +5,19 @@
 // Readest-on-Qt smoke, over QtWebEngine's DevTools protocol.
 //
 //   node integrations/readest/check.mjs [--port 9222] [--timeout-ms 5000]
+//                                      [--context-timeout-ms 60000]
 //                                      [--url-substring localhost:3000]
 //
 // Start the app first: integrations/readest/run.sh opens CDP on 9222.
+//
+// Attaching is a race, and the timing is the app's, not ours: QtWebEngine lists
+// the page target as soon as the navigation is requested, which for an app that
+// starts its window hidden (Readest does) is *before* the renderer has a
+// document — a `Runtime.evaluate` sent then answers "Cannot find default
+// execution context", and a single-sample `document.title` reads empty. So the
+// driver waits for the *main frame's* execution context (every frame, iframes
+// included, has a "default" world; only the main frame's is what a contextless
+// evaluate means) and polls the checks that describe a loaded page.
 //
 // The last check is the interesting one: `get_environment_variable` is a real
 // Readest command, so a value coming back proves the whole path — page ->
@@ -18,14 +28,15 @@
 //
 // Exit codes: 0 all checks passed, 1 a check failed, 2 no CDP endpoint.
 
-const args = { port: 9222, timeoutMs: 5000, urlSubstring: 'localhost:3000' };
+const args = { port: 9222, timeoutMs: 5000, contextTimeoutMs: 60000, urlSubstring: 'localhost:3000' };
 for (let i = 2; i < process.argv.length; i += 1) {
   const [key, value] = [process.argv[i], process.argv[i + 1]];
   if (key === '--port') { args.port = Number(value); i += 1; }
   else if (key === '--timeout-ms') { args.timeoutMs = Number(value); i += 1; }
+  else if (key === '--context-timeout-ms') { args.contextTimeoutMs = Number(value); i += 1; }
   else if (key === '--url-substring') { args.urlSubstring = value; i += 1; }
   else if (key === '--help') {
-    console.log('usage: check.mjs [--port N] [--timeout-ms N] [--url-substring S]');
+    console.log('usage: check.mjs [--port N] [--timeout-ms N] [--context-timeout-ms N] [--url-substring S]');
     process.exit(0);
   }
 }
@@ -46,7 +57,11 @@ function report(name, ok, detail) {
 }
 
 class Cdp {
-  constructor(ws) { this.ws = ws; this.id = 0; this.pending = new Map(); }
+  constructor(ws) {
+    this.ws = ws; this.id = 0; this.pending = new Map();
+    this.contexts = new Map(); // executionContextId -> Runtime.ExecutionContextDescription
+    this.mainFrameId = null;
+  }
   static async connect(url) {
     const ws = new WebSocket(url);
     // Bound the handshake too: a target that accepts TCP but never completes the
@@ -63,10 +78,51 @@ class Cdp {
     const client = new Cdp(ws);
     ws.addEventListener('message', (event) => {
       const msg = JSON.parse(event.data);
+      if (msg.method !== undefined) { client.onEvent(msg); return; }
       const slot = client.pending.get(msg.id);
       if (slot) { client.pending.delete(msg.id); slot(msg); }
     });
+    await client.send('Runtime.enable');
+    // Which frame a context belongs to is only knowable from the frame tree (or
+    // an error, on a target that has no frame yet — then the fallback below
+    // applies, and the first default context is the main frame's anyway).
+    client.mainFrameId = await client
+      .send('Page.getFrameTree')
+      .then((tree) => tree.frameTree?.frame?.id ?? null)
+      .catch(() => null);
     return client;
+  }
+  onEvent(msg) {
+    const context = msg.params?.context;
+    if (msg.method === 'Runtime.executionContextCreated') {
+      this.contexts.set(context.id, context);
+    } else if (msg.method === 'Runtime.executionContextDestroyed') {
+      this.contexts.delete(msg.params.executionContextId);
+    } else if (msg.method === 'Runtime.executionContextsCleared') {
+      // The frame survives a navigation, its document does not.
+      this.contexts.clear();
+    }
+  }
+  /// The context a contextless `Runtime.evaluate` would use: the main frame's
+  /// default world. Insertion order is creation order, and a document exists
+  /// before the iframes inside it, so the first default is the right guess when
+  /// the frame tree could not be read.
+  get defaultContextId() {
+    const defaults = [...this.contexts.values()].filter((c) => c.auxData?.isDefault);
+    const main = this.mainFrameId === null
+      ? defaults[0]
+      : defaults.find((c) => c.auxData?.frameId === this.mainFrameId);
+    return main?.id ?? null;
+  }
+  /// Wait for that context to exist — on a cold app it appears only once the
+  /// window is mapped and the document commits — or give up and return null,
+  /// which leaves the evaluation to Chromium's own default.
+  async waitForDefaultContext(timeoutMs = args.contextTimeoutMs) {
+    const deadline = Date.now() + timeoutMs;
+    while (this.defaultContextId === null && Date.now() < deadline) {
+      await new Promise((done) => setTimeout(done, 50));
+    }
+    return this.defaultContextId;
   }
   send(method, params = {}) {
     const id = (this.id += 1);
@@ -94,7 +150,25 @@ class Cdp {
     return last;
   }
   async eval(expression, awaitPromise = false) {
-    const out = await this.send('Runtime.evaluate', { expression, awaitPromise, returnByValue: true });
+    const contextId = await this.waitForDefaultContext();
+    try {
+      return await this.evalWith(contextId, expression, awaitPromise);
+    } catch (err) {
+      // A navigation that commits while we evaluate (Next dev reloads the page
+      // when a route recompiles) invalidates the context we picked: take the
+      // new one and try once more. Chromium words that loss two ways — "Cannot
+      // find default execution context" (none set) and "Cannot find context
+      // with specified id" (the id we picked is gone).
+      if (contextId === null || !/execution context|context with specified id/i.test(err.message)) throw err;
+      const next = await this.waitForDefaultContext();
+      if (next === null || next === contextId) throw err;
+      return this.evalWith(next, expression, awaitPromise);
+    }
+  }
+  async evalWith(contextId, expression, awaitPromise) {
+    const params = { expression, awaitPromise, returnByValue: true };
+    if (contextId !== null) params.contextId = contextId;
+    const out = await this.send('Runtime.evaluate', params);
     if (out.exceptionDetails) {
       throw new Error(out.exceptionDetails.exception?.description ?? out.exceptionDetails.text);
     }
@@ -130,10 +204,10 @@ report('page target found', true, page.url);
 
 const cdp = await Cdp.connect(page.webSocketDebuggerUrl);
 try {
-  const title = await cdp.eval('document.title');
+  const title = await cdp.evalUntil('document.title', (value) => Boolean(value));
   report('page has a title', Boolean(title), title);
 
-  const internals = await cdp.eval('typeof window.__TAURI_INTERNALS__');
+  const internals = await cdp.evalUntil('typeof window.__TAURI_INTERNALS__', (value) => value === 'object');
   report('window.__TAURI_INTERNALS__ present', internals === 'object', internals);
 
   const body = await cdp.evalUntil(

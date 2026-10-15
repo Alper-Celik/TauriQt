@@ -109,6 +109,22 @@ ChromeDriver insists on a tab of its own. WebDriver-driven suites (`test:tauri`,
 page the app already owns (which is why `check.mjs` and `tools/cdp-probe/` work, and why
 Playwright attach is limited to contexts/pages that already exist).
 
+### Attaching is a race — so the driver waits for the main frame
+
+QtWebEngine publishes the page target as soon as the navigation is *requested*, and Readest
+starts its main window hidden (see below), so the renderer may not have a document yet when
+a driver connects. A `Runtime.evaluate` sent in that state answers
+`Cannot find default execution context`, and `document.title` reads empty: the 2026-10-15
+nightly failed exactly that way, on the first check, one nightly after the **same commit**
+(`424f057`) passed — a timing window, not a regression in the app or in this runtime.
+
+`check.mjs` therefore stops sampling the page once and hoping. It enables `Runtime`, waits
+for the **main frame's** execution context — tracked through `Page.getFrameTree`, because
+every frame (a book-rendering iframe included) has a "default" world of its own — and polls
+the checks that describe a loaded page. `--context-timeout-ms` (default 60000) bounds that
+wait, and CI's failure path now prints the app's own log, which is where the *app's* side of
+a CDP failure is visible.
+
 ## Measured results (2026-10-11, aarch64/NixOS, Qt 6.11.2)
 
 | What | Result |
