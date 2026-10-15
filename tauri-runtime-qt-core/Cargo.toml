@@ -3,7 +3,7 @@
 
 [package]
 name = "tauri-runtime-qt-core"
-version = "0.0.0"
+version = "0.0.1"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 description = "Qt-free half of tauri-runtime-qt: the window, webview, cookie and screen state the Qt side shares"
