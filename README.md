@@ -162,6 +162,37 @@ app is a directory plus an entry in that file — see
 (checkout outside this cargo workspace, several GB, and prefer CDP over WebDriver: QtWebEngine
 cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
+## Publishing
+
+The two runtime crates carry crates.io metadata under their own names, and the demo is
+`publish = false` (it is the test app; `just publish` publishes exactly
+`tauri-runtime-qt-core` then `tauri-runtime-qt`):
+
+```bash
+just publish-dry     # package + verify-build both, upload nothing
+just publish         # upload — needs CARGO_REGISTRY_TOKEN or a prior `cargo login`
+```
+
+Both are hand-run: no CI job holds the token. `scripts/publish.sh` encodes the one ordering
+trap — `cargo publish` builds the *packaged* crate, where the path dependency on the core
+crate has been rewritten to `version = "0.1.0"`, so core has to be on crates.io and visible
+in the index cargo reads before the runtime half can be packaged. The script waits for that,
+and refuses a dirty tree.
+
+Two costs worth knowing before the first upload:
+
+- **docs.rs cannot build `tauri-runtime-qt`.** Its build image installs build-essential,
+  clang, cmake, pkg-config, libssl-dev and little else — no Qt — so the build script finds no
+  qmake and the docs build fails. The Qt-free `tauri-runtime-qt-core` documents fine; for the
+  runtime half, build docs locally (`cargo doc -p tauri-runtime-qt --no-deps`) or publish
+  them wherever the coverage report already goes (<https://tauriqt-coverage.alper-celik.dev/>).
+- The verify build compiles the C++ bridge against the consumer's Qt, so it needs the same
+  Qt Widgets + WebEngineWidgets qmake finds — the requirement does not disappear because the
+  crate comes from a registry.
+
+Once a version is on crates.io, `tauri-runtime-qt = "0.1"` replaces the path dependency in
+"Use it in your app" above; the wiring is identical either way.
+
 ## Known limits (structural, not bugs in progress)
 
 - **Wayland has no global window coordinates.** A compositor owns placement, so

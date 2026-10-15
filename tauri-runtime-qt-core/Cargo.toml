@@ -6,6 +6,11 @@ name = "tauri-runtime-qt-core"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
+description = "Qt-free half of tauri-runtime-qt: the window, webview, cookie and screen state the Qt side shares"
+repository = "https://github.com/Alper-Celik/TauriQt"
+readme = "../README.md"
+keywords = ["tauri", "qt", "runtime", "webview"]
+categories = ["gui", "web-programming"]
 
 [dependencies]
 base64 = "0.22"

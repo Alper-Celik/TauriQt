@@ -83,6 +83,16 @@ coverage:
 coverage-html:
     nix develop .#ci -c scripts/coverage.sh --no-build --no-run
 
+# ---------------------------------------------------------------- release -----
+
+# package + verify-build both runtime crates, upload nothing
+publish-dry:
+    nix develop -c scripts/publish.sh --dry-run
+
+# publish tauri-runtime-qt{,-core} to crates.io (needs CARGO_REGISTRY_TOKEN)
+publish:
+    nix develop -c scripts/publish.sh
+
 # ------------------------------------------------------------ flake checks ----
 
 # run one flake check by name (smoke | wayland-smoke | sway-oracle)
