@@ -35,11 +35,13 @@ jobs:
       # a VM/nixosTest tier would need.
       - uses: samueldr/lix-gha-installer-action@v2026-06-15
         with:
-          extra_nix_config: experimental-features = nix-command flakes
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            auto-optimise-store = false
       - uses: nix-community/cache-nix-action@v7
         with:
-          primary-key: nix-${{ matrix.sys.system }}-${{ hashFiles('flake.lock', 'Cargo.lock') }}
-          restore-prefixes-first-match: nix-${{ matrix.sys.system }}-
+          primary-key: nix-${{ matrix.sys.system }}-g2-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-${{ matrix.sys.system }}-g2-
           gc-max-store-size-linux: 8G
       - name: Run check
         shell: bash

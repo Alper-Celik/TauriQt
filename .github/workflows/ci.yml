@@ -33,6 +33,19 @@
 # because Lix's installer does not enable the CLI's experimental features (the
 # Determinate installer used to) and every command here is a flake command.
 # flake.nix carries no `nixConfig`, so there is nothing else to accept.
+#
+# The same `extra_nix_config` turns `auto-optimise-store` back *off*: the
+# installer sets it on, and cache-nix-action cannot restore a cache saved from a
+# store that deduplicated into `/nix/store/.links` — `Cannot hard link to
+# '../../../../../nix/store/.links/…': No such file or directory`, its issue #170,
+# still open. The damage is worse than a lost cache: the half-restored store is
+# inconsistent, so the *next* `nix copy` dies of the same missing link — which is
+# how every aarch64 check on 2026-10-15 failed. nix.conf is last-setting-wins and
+# this text is appended to it, so the override sticks.
+#
+# The cache keys carry a `-g2` generation for the same reason: caches saved while
+# optimisation was on are exactly the un-restorable ones, and a prefix match would
+# keep restoring them.
 
 name: CI
 

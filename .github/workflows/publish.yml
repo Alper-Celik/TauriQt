@@ -24,6 +24,11 @@
 # its post step. One token covers both crates — the crates.io configuration is
 # per crate, but it trusts *this workflow*, not a token.
 #
+# Its installer step also turns `auto-optimise-store` off, for the reason spelled
+# out in ci.yml: cache-nix-action cannot restore a store that deduplicated into
+# `/nix/store/.links` (its issue #170), and a half-failed restore poisons the
+# store for every step after it. The cache key carries the same `-g2` generation.
+#
 # One-time bootstrap, because crates.io only accepts that configuration on a crate
 # that already exists: create an API token, `cargo login`, publish the first
 # release by hand (`just publish`), then add the trusted publisher to both crates
@@ -74,11 +79,13 @@ jobs:
           fetch-depth: 0
       - uses: samueldr/lix-gha-installer-action@v2026-06-15
         with:
-          extra_nix_config: experimental-features = nix-command flakes
+          extra_nix_config: |
+            experimental-features = nix-command flakes
+            auto-optimise-store = false
       - uses: nix-community/cache-nix-action@v7
         with:
-          primary-key: nix-x86_64-linux-${{ hashFiles('flake.lock', 'Cargo.lock') }}
-          restore-prefixes-first-match: nix-x86_64-linux-
+          primary-key: nix-x86_64-linux-g2-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-x86_64-linux-g2-
           gc-max-store-size-linux: 8G
       - name: Wait for CI to have graded this release
         if: github.event_name == 'push' || inputs.dry-run == false
