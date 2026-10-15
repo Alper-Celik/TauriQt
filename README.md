@@ -164,22 +164,35 @@ cannot create a second target, so WebDriver-driven suites are protocol-blocked).
 
 ## Publishing
 
-The two runtime crates carry crates.io metadata under their own names, and the demo is
-`publish = false` (it is the test app; `just publish` publishes exactly
-`tauri-runtime-qt-core` then `tauri-runtime-qt`):
+Releasing is a tag. Bump `version` in both crate manifests — CI checks them against the tag
+and against each other, and the runtime's dependency on the core crate names the same version
+— commit, push, then:
 
 ```bash
-just publish-dry     # package + verify-build both, upload nothing
-just publish         # upload — needs CARGO_REGISTRY_TOKEN or a prior `cargo login`
+git tag v0.1.0 && git push origin v0.1.0
 ```
 
-Both are hand-run: no CI job holds the token. `scripts/publish.sh` encodes the one ordering
-trap — `cargo publish` builds the *packaged* crate, where the path dependency on the core
-crate has been rewritten to `version = "0.1.0"`, so core has to be on crates.io and visible
-in the index cargo reads before the runtime half can be packaged. The script waits for that,
-and refuses a dirty tree.
+`.github/workflows/publish.yml` does the rest, in this order: wait for **that commit's CI run
+to finish** (a tag that has not been graded is refused, not released; tagging right after
+pushing just waits), check the tag against the manifests, package and verify-build both
+crates, then upload `tauri-runtime-qt-core` and — after waiting for its entry in the sparse
+index cargo resolves against — `tauri-runtime-qt`. Versions already on crates.io are skipped,
+so a release that half-succeeded is finished by re-running the workflow;
+`workflow_dispatch` runs the same job as a **dry run** (packaged and verify-built, nothing
+uploaded, no token needed).
 
-Two costs worth knowing before the first upload:
+The upload needs one repository secret — `CARGO_REGISTRY_TOKEN`, a crates.io token with
+`publish-new` + `publish-update` — and its absence fails the job rather than skipping the
+upload quietly: a green release run that published nothing would be the worst outcome.
+
+`scripts/publish.sh` is the same procedure by hand (`just publish-dry`, `just publish`) for
+the cases CI is not the right tool for. It encodes the ordering trap both paths share:
+`cargo publish` builds the *packaged* crate, where the path dependency on the core crate has
+been rewritten to `version = "0.1.0"`, so core has to be on crates.io before the runtime half
+can even be packaged. It refuses a dirty tree and version skew, and skips versions that are
+already up. Only the two runtime crates publish; the `tauriqt` demo is `publish = false`.
+
+Two costs worth knowing:
 
 - **docs.rs cannot build `tauri-runtime-qt`.** Its build image installs build-essential,
   clang, cmake, pkg-config, libssl-dev and little else — no Qt — so the build script finds no

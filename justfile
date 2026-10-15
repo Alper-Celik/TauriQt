@@ -89,7 +89,8 @@ coverage-html:
 publish-dry:
     nix develop -c scripts/publish.sh --dry-run
 
-# publish tauri-runtime-qt{,-core} to crates.io (needs CARGO_REGISTRY_TOKEN)
+# publish tauri-runtime-qt{,-core} to crates.io by hand (needs a crates.io token);
+# CI does the same on a version tag — see README "Publishing"
 publish:
     nix develop -c scripts/publish.sh
 

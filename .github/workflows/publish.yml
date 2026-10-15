@@ -1,0 +1,173 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik
+# SPDX-License-Identifier: MIT OR Apache-2.0
+#
+# `publish` — upload the two runtime crates to crates.io from CI.
+#
+# Trigger is the version tag (`v0.1.0`), because that is the one thing that says
+# "this commit is a release". The tag has to agree with the manifests' `version`
+# — a forgotten bump fails here, before anything reaches the registry — and the
+# script this calls refuses a dirty tree and version skew (`scripts/publish.sh`).
+#
+# Nothing publishes from a commit CI has not graded: the first step waits for at
+# least one green CI run of this commit and fails when every run that finished
+# disagreed, or when none appears in 30 minutes. Tagging right after pushing
+# therefore works — the job waits for the graph to finish — while a tag on a
+# commit CI never passed is refused rather than released. (Any green run counts,
+# so a later flaky cell does not retroactively block a release.)
+#
+# The upload needs the repository secret CARGO_REGISTRY_TOKEN (a crates.io token
+# with `publish-new` + `publish-update`). A missing token fails the job instead
+# of skipping quietly: the trigger is an explicit release, and a green run that
+# uploaded nothing would be the worst outcome. `workflow_dispatch` with `dry-run`
+# left on packages and verify-builds both crates without a token at all.
+#
+# x86_64 only, and not part of ci.yml's graph (`ci.yml` builds on a push to
+# `main`, which a tag push does not match): the crates are
+# platform-independent, and their verification — compiling the packaged tarballs,
+# including the runtime's C++/Qt bridge — is the same work on either system.
+name: publish
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Package and verify-build both crates, but upload nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  # To read the CI runs of this commit (the gate below).
+  actions: read
+
+concurrency:
+  group: publish-${{ github.ref }}
+  # A release must not be cancelled halfway; a queued re-run is the way to retry.
+  cancel-in-progress: false
+
+jobs:
+  crates-io:
+    name: crates.io
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      # `secrets` is not usable in a step-level `if`, so it is read once here;
+      # the "upload anything" condition reads this instead.
+      CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: samueldr/lix-gha-installer-action@v2026-06-15
+        with:
+          extra_nix_config: experimental-features = nix-command flakes
+      - uses: nix-community/cache-nix-action@v7
+        with:
+          primary-key: nix-x86_64-linux-${{ hashFiles('flake.lock', 'Cargo.lock') }}
+          restore-prefixes-first-match: nix-x86_64-linux-
+          gc-max-store-size-linux: 8G
+      - name: Wait for CI to have graded this commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # curl + grep rather than gh: the runner provides Nix and nothing else
+          # (see ci.yml), and this needs no JSON tooling of its own. Every
+          # pipeline is `|| true`-guarded: `grep -o` exits 1 on no match, and
+          # GitHub runs this script with `set -e`.
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs"
+          deadline=$((SECONDS + 1800))
+          while :; do
+            body="$(curl -sf -H "Authorization: Bearer ${GH_TOKEN}" \
+              -H 'Accept: application/vnd.github+json' \
+              "$api?head_sha=${GITHUB_SHA}&per_page=100" || true)"
+            if printf '%s' "$body" | grep -q '"conclusion": *"success"'; then
+              echo "CI has a green run for ${GITHUB_SHA}"
+              break
+            fi
+            finished="$(printf '%s' "$body" | grep -o '"conclusion": *"[a-z_]*"' | cut -d'"' -f4 | sort -u || true)"
+            unfinished="$(printf '%s' "$body" | grep -o '"status": *"[a-z_]*"' | cut -d'"' -f4 | grep -vx completed || true)"
+            if [[ -n "$finished" && -z "$unfinished" ]]; then
+              echo "::error::every CI run for ${GITHUB_SHA} finished without a success (${finished//$'\n'/ }); fix it and re-run this workflow"
+              exit 1
+            fi
+            if [[ -z "$finished" && -z "$unfinished" && "$SECONDS" -ge "$deadline" ]]; then
+              echo "::error::no CI run for ${GITHUB_SHA} appeared in 30 min; dispatch one (gh workflow run CI), then re-run this workflow"
+              exit 1
+            fi
+            if [[ -z "$finished" && -z "$unfinished" ]]; then
+              echo "no CI run for ${GITHUB_SHA} yet…"
+            else
+              echo "waiting for CI on ${GITHUB_SHA} (finished:${finished:-none} unfinished:${unfinished:-none})…"
+            fi
+            sleep 30
+          done
+      - name: Check the tag against the manifests
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' tauri-runtime-qt/Cargo.toml | head -1)"
+          if [[ "${GITHUB_REF_TYPE}" == tag && "${GITHUB_REF_NAME}" != "v$version" ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match the manifests' version ${version} (scripts/publish.sh checks the three versions against each other)"
+            exit 1
+          fi
+      - name: Package and verify-build both crates
+        shell: bash
+        run: |
+          set -o pipefail
+          env LD_LIBRARY_PATH= nix develop .#ci -c scripts/publish.sh --dry-run 2>&1 | tee publish-dry-run.log
+      - name: Require the crates.io token
+        if: github.event_name == 'push' || inputs.dry-run == false
+        shell: bash
+        run: |
+          if [[ -z "$CARGO_REGISTRY_TOKEN" ]]; then
+            echo "::error::no CARGO_REGISTRY_TOKEN secret; add a crates.io token with publish-new + publish-update (Settings -> Secrets and variables -> Actions)"
+            exit 1
+          fi
+      - name: Publish to crates.io
+        if: github.event_name == 'push' || inputs.dry-run == false
+        shell: bash
+        run: |
+          set -o pipefail
+          # CARGO_REGISTRY_TOKEN is inherited by the dev shell; versions already
+          # on the registry are skipped, so this is safe to re-run.
+          env LD_LIBRARY_PATH= nix develop .#ci -c scripts/publish.sh 2>&1 | tee publish.log
+      - name: Write the run summary
+        if: always()
+        shell: bash
+        run: |
+          version="$(sed -n 's/^version = "\([^"]*\)"/\1/p' tauri-runtime-qt/Cargo.toml | head -1)"
+          {
+            if [[ "${{ github.event_name }}" == push || "${{ inputs.dry-run }}" == false ]]; then
+              echo "## crates.io: tauri-runtime-qt{,-core} ${version}"
+            else
+              echo "## crates.io dry run: tauri-runtime-qt{,-core} ${version}"
+            fi
+            echo
+            echo "- tag: \`${{ github.ref_name }}\` at \`${{ github.sha }}\`"
+            echo "- crate: <https://crates.io/crates/tauri-runtime-qt/${version}>"
+            echo
+            if [[ -s publish-dry-run.log ]]; then
+              echo "<details><summary>packaging + verify build</summary>"
+              echo
+              echo '```'
+              tail -c 4000 publish-dry-run.log
+              echo '```'
+              echo "</details>"
+            fi
+            if [[ -s publish.log ]]; then
+              echo "<details><summary>publish</summary>"
+              echo
+              echo '```'
+              tail -c 4000 publish.log
+              echo '```'
+              echo "</details>"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v5
+        if: always()
+        with:
+          name: publish-logs
+          path: |
+            publish.log
+            publish-dry-run.log
+          retention-days: 14

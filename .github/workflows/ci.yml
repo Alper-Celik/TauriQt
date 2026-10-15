@@ -16,6 +16,10 @@
 #   apps.yml       one cell per third-party app (nightly/dispatch only)
 #   collect.yml    folds every cell into the summary and decides the outcome
 #
+# publish.yml is *not* part of this graph: a version tag triggers it on its own
+# (a tag push does not match the push-to-main trigger below), and it gates itself
+# on a green run of this workflow for the commit it is releasing.
+#
 # Nix comes from Lix (samueldr/lix-gha-installer-action), not the Determinate
 # Systems distribution — the installer is FOSS (LGPL-2.1) and installs upstream
 # Lix from lix.systems. Every *other* binary the harness runs — sway/cage/weston
