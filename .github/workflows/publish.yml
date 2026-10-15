@@ -122,8 +122,16 @@ jobs:
             fi
             finished="$(printf '%s' "$body" | grep -o '"conclusion": *"[a-z_]*"' | cut -d'"' -f4 | sort -u || true)"
             unfinished="$(printf '%s' "$body" | grep -o '"status": *"[a-z_]*"' | cut -d'"' -f4 | grep -vx completed || true)"
-            if [[ -n "$finished" && -z "$unfinished" ]]; then
-              echo "::error::every CI run for main's tip ${tip} finished without a success (${finished//$'\n'/ }); fix main and re-run this workflow"
+            # Only a *failure* is a verdict against the release. A cancelled or
+            # timed-out run says nothing about the commit — CI being re-run after
+            # a flaky cell is normal, and refusing on it turns that into a failed
+            # release run (the v0.0.1 retry). Those keep waiting instead.
+            if printf '%s\n' "$finished" | grep -qx failure; then
+              echo "::error::CI for main's tip ${tip} failed (${finished//$'\n'/ }); fix main, then re-run this workflow"
+              exit 1
+            fi
+            if [[ -n "$finished" && -z "$unfinished" && "$SECONDS" -ge "$deadline" ]]; then
+              echo "::error::every CI run for main's tip ${tip} finished without a success (${finished//$'\n'/ }); re-run CI for it, then re-run this workflow"
               exit 1
             fi
             if [[ -z "$finished" && -z "$unfinished" && "$SECONDS" -ge "$deadline" ]]; then
